@@ -1,0 +1,6 @@
+board:
+  name: ocs_rf_1
+  full_name: OCS RF 1
+  vendor: atmel
+  socs:
+    - name: samd21g17a
