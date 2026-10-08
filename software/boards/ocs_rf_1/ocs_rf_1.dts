@@ -10,12 +10,15 @@
 #include <atmel/samd21.dtsi>
 #include <atmel/samx2xx17.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <dt-bindings/pinctrl/samd21-da1jXabcd-pinctrl.h>
 
 / {
 	model = "OCS RF 1";
 	compatible = "atmel,samd21g17a", "atmel,samd21";  // Should add  <prefix>, ocs-rf-1 at the beginning, idk the vendor
 
 	chosen {
+		zephyr,console = &sercom5;
+		zephyr,shell-uart = &sercom5;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 	};
@@ -46,4 +49,56 @@
 
 &cpu0 {
 	clock-frequency = <DT_FREQ_M(48)>;
+};
+
+
+//Console
+&sercom5 {
+	status = "okay";
+	compatible = "atmel,sam0-uart";
+	current-speed = <115200>;
+	rxpo = <2>; //Sercom5 Pad2
+	txpo = <0>; //Sercom5 Pad0
+
+	pinctrl-0 = <&sercom5_uart_default>;
+	pinctrl-names = "default";
+};
+
+//Spi to transceiver
+&sercom1 {
+	status = "okay";
+	compatible = "atmel,sam0-spi";
+
+	dipo = <3>; // MISO
+	dopo = <0>; // MOSI
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	cs-gpios = <&porta 18 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&sercom1_spi_default>;
+	pinctrl-names = "default";
+
+//	at86rf215: at86rf215@0 {
+//		compatible = "atmel,rf2xx";
+//		reg = <0>;
+//		spi-max-frequency = <1000000>;
+//
+//		// AT86RF215 IRQ pin is active high after reset (datasheet 4.3, RF_CFG.IRQP). Update this flag if the driver changes IRQP.
+//		irq-gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
+//		reset-gpios = <&porta 1 GPIO_ACTIVE_LOW>;
+//	};
+};
+
+&pinctrl {
+	sercom5_uart_default: sercom5_uart_default {
+		pinmux = <PA22D_SERCOM5_PAD0>,
+		         <PB22D_SERCOM5_PAD2>;
+	};
+	sercom1_spi_default: sercom1_spi_default {
+		pinmux = <PA16C_SERCOM1_PAD0>,
+				 <PA17C_SERCOM1_PAD1>,
+				 <PA19C_SERCOM1_PAD3>;
+	};
+
 };
