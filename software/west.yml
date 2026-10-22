@@ -1,0 +1,13 @@
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v3.5.0  # Lock to a specific Zephyr release or commit
+      import: true      # Automatically pull in Zephyr's required dependencies (like HALs)
+
+  self:
+    path: software
