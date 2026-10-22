@@ -10,4 +10,4 @@ manifest:
       import: true      # Automatically pull in Zephyr's required dependencies (like HALs)
 
   self:
-    path: software
+    path: satcomms-ocs-rf-1.0/software
