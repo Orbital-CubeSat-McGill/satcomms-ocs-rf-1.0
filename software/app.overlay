@@ -1,0 +1,26 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/* Nano mounted directly on the RF board's J1/J2 headers.
+ * Follow connector positions, not the schematic's crossed MCU signal labels.
+ * J1.11: radio MISO -> PA16/PAD0; J1.12: PA19/PAD3 -> radio MOSI.
+ * J2.23: PA14 -> radio RSTN, despite the schematic label "PA01-RST".
+ */
+&sercom1 {
+    dipo = <0>; /* MISO input: PAD0 / PA16. */
+    dopo = <2>; /* MOSI output: PAD3 / PA19; SCK remains PAD1 / PA17. */
+
+    at86rf215: at86rf215@0 {
+        compatible = "microchip,at86rf215";
+        reg = <0>;
+        spi-max-frequency = <1000000>;
+
+        reset-gpios = <&porta 14 GPIO_ACTIVE_LOW>;
+        irq-gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
+
+        status = "okay";
+    };
+};
+
+&eic {
+    status = "okay";
+};

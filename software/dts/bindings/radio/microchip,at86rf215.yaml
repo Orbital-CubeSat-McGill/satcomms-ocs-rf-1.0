@@ -1,0 +1,16 @@
+description: AT86RF215 radio accessed by the OCS application driver
+
+compatible: "microchip,at86rf215"
+
+include: spi-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: Active-low radio reset signal
+
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: Radio interrupt signal
