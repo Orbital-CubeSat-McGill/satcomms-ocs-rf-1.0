@@ -76,15 +76,15 @@
 	pinctrl-0 = <&sercom1_spi_default>;
 	pinctrl-names = "default";
 
-	//	at86rf215: at86rf215@0 {
-	//		compatible = "atmel,rf2xx";
-	//		reg = <0>;
-	//		spi-max-frequency = <1000000>;
-	//
-	//		// AT86RF215 IRQ pin is active high after reset (datasheet 4.3, RF_CFG.IRQP). Update this flag if the driver changes IRQP.
-	//		irq-gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
-	//		reset-gpios = <&porta 1 GPIO_ACTIVE_LOW>;
-	//	};
+		at86rf215: at86rf215@0 {
+			compatible = "atmel,at86rf215";
+			reg = <0>;
+			spi-max-frequency = <1000000>;
+
+			// AT86RF215 IRQ pin is active high after reset (datasheet 4.3, RF_CFG.IRQP). Update this flag if the driver changes IRQP.
+			irq-gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&porta 1 GPIO_ACTIVE_LOW>;
+		};
 };
 
 &pinctrl {
