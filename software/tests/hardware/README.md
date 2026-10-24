@@ -6,7 +6,7 @@ board checks passed. They contain no simulated radio.
 
 | Program | What runs on the board | Pass evidence |
 |---|---|---|
-| [spi_bringup/src/main.c](spi_bringup/src/main.c) | PN/VN reads, reversible register/block writes, Hello world RAM readback, reset/IRQ checks and repeated ID reads. No RF transmission. | Actual terminal output ending in `BRING-UP PASS (0)`. |
+| [spi_bringup/src/main.c](spi_bringup/src/main.c) | Initializes/resets the radio and reads PN/VN over SPI. Checks PN against `0x34` and prints VN; no register/buffer writes, IRQ-status clearing or RF transmission. | Actual terminal output with identification values and `BRING-UP PASS (0)`. |
 | [radio_packet/src/main.c](radio_packet/src/main.c) | RF profile/PLL readiness, one Hello world TX per button press, CRC-checked packet RX. | Configuration output, external HackRF capture, then CRC-valid Hello world reception during replay. Local TX completion alone does not establish reception. |
 
 The earlier low-level SPI diagnostic passed on the board. The newer public API

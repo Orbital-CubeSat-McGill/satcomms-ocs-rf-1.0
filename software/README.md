@@ -9,7 +9,7 @@ pin mapping and the distinction between schematic labels and actual MCU pins.
 | Location | Runs on | Purpose |
 |---|---|---|
 | [tests/software/](tests/software/README.md) | QEMU on the Mac; no boards | 40 automated cases using simulated transports/chips. |
-| [tests/hardware/spi_bringup/](tests/hardware/spi_bringup/) | Nano mounted on the RF board | Actual SPI register/memory, reset and GPIO interrupt checks; no RF transmission. |
+| [tests/hardware/spi_bringup/](tests/hardware/spi_bringup/) | Nano mounted on the RF board | Initializes/resets the radio and checks PN/VN over SPI; no RF transmission. |
 | [tests/hardware/radio_packet/](tests/hardware/radio_packet/) | Nano + RF board, with HackRF for the RF check | Actual radio configuration, button-operated TX and packet RX. |
 
 See [the test index](tests/README.md) and [hardware test instructions](tests/hardware/README.md).
@@ -27,8 +27,10 @@ wired SPI; they do not send or receive wireless packets.
 
 See [the SPI API guide](docs/spi-api.md) for a complete Hello world example,
 function arguments, errors, C terminology and testing instructions. The existing
-bring-up program now exercises this interface, including the part-number and
-reversible Hello world memory checks.
+bring-up program initializes/resets the radio, checks the part number against
+`0x34`, and prints the version using single-register and block SPI reads.
+Register/buffer writes, Hello world readback, state/IRQ checks and the repeated
+read loop have been removed from that program.
 
 ## RF packet driver and HackRF bench
 
@@ -91,6 +93,7 @@ the console open restarts the checks and captures the startup messages.
 
 ## Verified hardware result: October 22, 2026
 
+This records the earlier full diagnostic, before it was reduced to PN/VN reads.
 The mounted Nano was identified by OpenOCD as SAMD21G17D (128KB flash, 16KB
 RAM). The image was flashed and verified, then the serial console reported
 PN=0x34, VN=0x03 and `BRING-UP PASS (0)`. All bring-up stages passed.

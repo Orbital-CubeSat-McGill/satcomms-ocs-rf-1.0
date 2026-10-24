@@ -47,10 +47,13 @@ would instead need DIPO=3, DOPO=0 and reset PA01. That is not the current setup.
 
 ## Test scope
 
-The bring-up application tests radio reset, PN/VN identification, inactive
-RF09 state, a reversible IRQ-mask write, reversible block RAM access, a reset
-WAKEUP interrupt from both radios, read-to-clear IRQ status, and 100 repeated
-ID reads. On October 22, 2026, this sequence passed on the connected board:
+The current bring-up application initializes/resets the radio and reads PN/VN
+over SPI. It checks PN against `0x34` and prints VN. Register/buffer writes,
+state/IRQ checks, IRQ-status clearing and repeated-read tests have been removed.
+
+The earlier full diagnostic also exercised register/RAM writes, reset WAKEUP
+interrupts and repeated ID reads. On October 22, 2026, that earlier sequence
+passed on the connected board:
 PN=0x34, VN=0x03, RF09/RF24 WAKEUP status=0x01, and `BRING-UP PASS (0)`.
 
 The ten Ztest cases use a fake transport and exercise protocol encoding,

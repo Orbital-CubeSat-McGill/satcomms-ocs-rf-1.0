@@ -5,7 +5,7 @@
 This adds a real RF packet driver above the wired SPI API. The separate packet
 bench application prepares the radio, receives packets, and sends one packet
 when the Nano's SW0 button is pressed. The original application under
-`software/tests/hardware/spi_bringup/src/main.c` remains the SPI/memory/interrupt diagnostic.
+`software/tests/hardware/spi_bringup/src/main.c` is the separate PN/VN-only SPI diagnostic.
 
 All 40 software tests pass in QEMU, and both applications compile for SAMD21.
 Physical RF operation is **not yet verified**: the boards were

@@ -64,8 +64,9 @@ variable": the function uses that address to store the byte it reads.
 
 ## Complete Hello world example
 
-The project's default `tests/hardware/spi_bringup/src/main.c` remains the fuller diagnostic program. To
-use the API in another application, the following is a complete minimal main
+The project's default `tests/hardware/spi_bringup/src/main.c` only initializes
+the radio and checks PN/VN. To use buffer access in another application, the
+following is a complete minimal main
 file. The API tests exercise its write/read operations against a simulated
 chip; they do not execute this example's main function.
 
@@ -117,8 +118,8 @@ int main(void)
 ```
 
 This example leaves the message in the TX memory buffer. It does not command
-the radio to transmit it. The default bring-up program additionally saves and
-restores the original memory so it can test without leaving its pattern there.
+the radio to transmit it. This is a separate example; the default bring-up
+program does not write Hello world or any other pattern to radio memory.
 
 The code means:
 
@@ -180,8 +181,8 @@ Several calls are not one atomic operation. Another thread can write between
 your write and your read. Assign a single thread ownership of compound radio
 procedures, or coordinate them at the application level. Calls to the older
 low-level driver, including reset/IRQ setup, bypass this API mutex; do not mix
-them concurrently with these functions. The diagnostic main uses those
-advanced GPIO/IRQ functions only from its single main thread.
+them concurrently with these functions. The PN/VN diagnostic uses only the
+public initialization/read functions from its single main thread.
 
 ## Files and implementation layers
 
@@ -193,7 +194,7 @@ advanced GPIO/IRQ functions only from its single main thread.
 | `src/radio/at86rf215_packet.c` | Programs the RF profile and handles complete packet operations. |
 | `src/radio/at86rf215_zephyr.c` | Connects the commands to physical Zephyr SPI/reset/IRQ drivers. |
 | `app.overlay` and board files | Select actual pins and peripheral settings. |
-| `tests/hardware/spi_bringup/src/main.c` | Exercises the public API on real hardware, plus GPIO/IRQ checks. |
+| `tests/hardware/spi_bringup/src/main.c` | Initializes/resets the radio and reads PN/VN through the public API on real hardware. |
 | `tests/software/radio_api/` | Exercises the real public API and protocol with a simulated chip. |
 | `tests/software/radio_core/` | Exercises the lower-level command encoding and validation. |
 
@@ -240,5 +241,5 @@ west flash -d /tmp/ocs-rf-spi-hardware -r openocd --verify
 ```
 
 Look for `PASS simple API init/presence check`, the actual PN/VN values,
-`SPI received: Hello world` and `BRING-UP PASS (0)`. Physical verification
+`PASS identification and block read` and `BRING-UP PASS (0)`. Physical verification
 requires fresh serial output from this API version, not an older saved log.
