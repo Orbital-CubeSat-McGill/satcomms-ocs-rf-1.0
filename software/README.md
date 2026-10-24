@@ -8,12 +8,14 @@ pin mapping and the distinction between schematic labels and actual MCU pins.
 
 | Location | Runs on | Purpose |
 |---|---|---|
-| [tests/software/](tests/software/README.md) | QEMU on the Mac; no boards | 44 automated cases using simulated transports/chips. |
+| [tests/software/](tests/software/README.md) | QEMU on the Mac; no boards | 67 automated cases using simulated transports/chips. |
 | [tests/hardware/spi_bringup/](tests/hardware/spi_bringup/) | Nano mounted on the RF board | Initializes/resets the radio and checks PN/VN over SPI; no RF transmission. |
 | [tests/hardware/radio_packet/](tests/hardware/radio_packet/) | Nano + RF board, with HackRF for the RF check | Actual radio configuration, button-operated TX and packet RX. |
+| [tests/hardware/can_bringup/](tests/hardware/can_bringup/README.md) | Nano mounted on the RF board | Separate read-only MCP251863 SPI/CRC/clock check; no CAN frames. |
+| [tests/hardware/can_loopback/](tests/hardware/can_loopback/README.md) | Same Nano and RF board; no second CAN node | Separate internal CAN frame/IRQ test with STBY high; no physical bus transmission. |
 
 See [the test index](tests/README.md) and [hardware test instructions](tests/hardware/README.md).
-The driver library stays in `src/radio/`; test programs have their own `src/main.c`.
+Radio drivers stay in `src/radio/`, CAN diagnostics in `src/can/`; test programs have their own `src/main.c`.
 Building `software/` is retained as a compatibility entry point for the SPI
 hardware test. New commands below use the explicit hardware-test directories.
 
@@ -66,7 +68,7 @@ Do not use an old pre-correction firmware image for the mounted board.
 west twister -T "$OCS_RF_REPO/software/tests/software" -p qemu_cortex_m3 --inline-logs --outdir /tmp/ocs-rf-software-tests
 ```
 
-Expected: forty-four cases pass across the core, SPI API and packet suites. The
+Expected: sixty-six cases pass across the radio and CAN diagnostic suites. The
 test executables replace the physical transport; they do not prove RF hardware
 operation. The suites cover initialization, invalid inputs, error recovery,
 interrupt rejection, serialization, radio states and packet handling.

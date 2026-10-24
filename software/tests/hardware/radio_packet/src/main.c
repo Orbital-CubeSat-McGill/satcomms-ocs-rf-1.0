@@ -7,7 +7,7 @@
 #include <ocs/radio.h>
 
 enum { TX_PACKET_COUNT = 10 };
-static const char tx_pattern[] = "Hello world from OCS RF 915 MHz!";
+static const char tx_pattern[] = "Hello world";
 static uint8_t tx_message[OCS_RADIO_MAX_PAYLOAD];
 static uint8_t received[OCS_RADIO_MAX_PAYLOAD];
 

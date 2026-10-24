@@ -65,11 +65,17 @@ The simple SPI API adds nine QEMU cases for initialization/presence checks,
 buffer access, errors, ISR rejection and serialization between threads. Its
 usage and physical-test instructions are in `software/docs/spi-api.md`.
 The separate `software/tests/hardware/radio_packet` application adds a 915 MHz packet
-bench. Its 21 packet-engine cases pass in QEMU; physical RF operation remains
+bench. Its 25 packet-engine cases pass in QEMU. On October 24, the operator
+reported observing its RF transmission on an SDR; payload decoding remains
 unverified. See `software/docs/radio-packets.md` for the Mayhem procedure.
 
-The CAN wiring has additional MCU-label/header-position inconsistencies in the
-schematic and needs a separate trace before CAN is enabled. The external
+The CAN schematic also has MCU-label/header-position inconsistencies. Its
+separate read-only diagnostic uses SERCOM0 PA04/MOSI, PA05/SCK, PA06/MISO,
+PA07/CS, PA03/INT and PA02/STBY. The operator reported ten valid CRC-protected
+snapshots, clock ready and `CAN SPI CHECK PASS (0)` on October 24. See
+`software/tests/hardware/can_bringup/README.md` for the mapping and
+`software/tests/hardware/can_loopback/README.md` for the next internal-loopback
+test. Physical CANH/CANL validation is still outstanding. The external
 26MHz reference must also meet the AT86RF215 datasheet's TCXO requirements;
 software cannot repair a missing or unsuitable reference clock.
 

@@ -1,0 +1,4 @@
+/* Reuse the pin mapping used by the read-only CAN SPI diagnostic.
+ * The bench compatible does not initialize Zephyr's production CAN driver.
+ */
+#include "../can_bringup/app.overlay"

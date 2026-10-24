@@ -9,11 +9,13 @@ that the physical RF board transmitted or received anything.
 | [radio_core/](radio_core/) | 10 | SPI command encoding, address/size validation and transport errors. |
 | [radio_api/](radio_api/) | 9 | Public register/buffer API, initialization, failed outputs, ISR rejection and mutex serialization. |
 | [radio_packet/](radio_packet/) | 25 | Packet profile/state sequencing, up to 2043-byte payloads, SPI chunking/failures, TX buffer/FCS handling, CRC/length checks, deadlines and recovery. |
+| [can_probe/](can_probe/) | 6 | Read-only CAN SPI commands, CRC fixtures, clock readiness, invalid inputs, failed-output preservation, and stuck MISO rejection. |
+| [can_loopback/](can_loopback/) | 17 | Internal mode enforcement, protected writes, RAM bounds, frame/IRQ validation, preflight refusal, timeouts and cleanup failures. |
 
 Each suite has `src/main.c` containing its test cases, `testcase.yaml` for
 Twister discovery, `prj.conf` for Zephyr options and `CMakeLists.txt` for its build.
 
-Run all 44 cases:
+Run all 67 cases:
 
 ```sh
 source /Users/muhammadaliullah/zephyrproject/.venv/bin/activate

@@ -1,0 +1,15 @@
+description: |
+  MCP251863 manual bench transport, used by read-only and internal-loopback tests.
+  This diagnostic-only compatible intentionally
+  does not bind the production CAN driver, whose initialization writes registers.
+compatible: "microchip,mcp251863-probe"
+include: spi-device.yaml
+properties:
+  standby-gpios:
+    type: phandle-array
+    required: true
+    description: External STBY signal, sampled as an input without changing its level.
+  int-gpios:
+    type: phandle-array
+    required: true
+    description: Main active-low interrupt signal, sampled as an input only.

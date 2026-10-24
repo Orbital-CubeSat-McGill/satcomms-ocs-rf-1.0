@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.20.0)
+get_filename_component(OCS_RF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+list(APPEND BOARD_ROOT ${OCS_RF_ROOT})
+list(APPEND DTS_ROOT ${OCS_RF_ROOT})
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(ocs_can_internal_loopback)
+target_include_directories(app PRIVATE ${OCS_RF_ROOT}/include)
+target_sources(app PRIVATE src/main.c
+    ${OCS_RF_ROOT}/src/can/mcp251863_probe.c
+    ${OCS_RF_ROOT}/src/can/mcp251863_loopback.c)

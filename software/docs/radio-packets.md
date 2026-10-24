@@ -8,7 +8,7 @@ ten packets when the Nano's SW0 button is pressed. There is a one-second delay
 between sends; reception resumes after the batch. The original application under
 `software/tests/hardware/spi_bringup/src/main.c` is the separate PN/VN-only SPI diagnostic.
 
-All 44 software tests pass in QEMU, and both applications compile for SAMD21.
+All 44 radio software tests pass in QEMU, and both radio applications compile for SAMD21.
 On October 24, 2026, the operator reported running the enlarged-packet bench
 and observing its transmission on an SDR. This records externally observed RF
 activity; payload decoding, calibrated RF measurements and CRC-valid receive/replay
@@ -47,7 +47,7 @@ the transmitted waveform and later transmit that recording back.
   of CRC status, received FCS type and frame length.
 - Application payload: 1..2043 bytes. The maximum PSDU is 2047 bytes including
   the four-byte CRC (datasheet sections 6.13.1 and 6.13.3).
-- The bench sample fills 2043 bytes by repeating `Hello world from OCS RF 915 MHz!`
+- The bench sample fills 2043 bytes by repeating `Hello world`
   and truncating the last repetition. Each frame is approximately 330.72 ms
   on air: (16-byte preamble + 2-byte SFD + 2-byte PHR + 2047-byte PSDU) at 50 kb/s;
   the one-second sleep is between completed sends, not continuous RF output.
@@ -274,8 +274,8 @@ has already happened. Exact menus depend on your installed Mayhem version.
 6. Look for actual terminal output:
 
 ```text
-RX CRC OK (2043 bytes; showing first 64): Hello world from OCS RF 915 MHz!Hello world from OCS RF 915 MHz!
-RX hex: 48 65 6c 6c 6f 20 77 6f 72 6c 64 20 66 72 6f 6d 20 4f 43 53 20 52 46 20 39 31 35 20 4d 48 7a 21 48 65 6c 6c 6f 20 77 6f 72 6c 64 20 66 72 6f 6d 20 4f 43 53 20 52 46 20 39 31 35 20 4d 48 7a 21
+RX CRC OK (2043 bytes; showing first 64): Hello worldHello worldHello worldHello worldHello worldHello wor
+RX hex: 48 65 6c 6c 6f 20 77 6f 72 6c 64 48 65 6c 6c 6f 20 77 6f 72 6c 64 48 65 6c 6c 6f 20 77 6f 72 6c 64 48 65 6c 6c 6f 20 77 6f 72 6c 64 48 65 6c 6c 6f 20 77 6f 72 6c 64 48 65 6c 6c 6f 20 77 6f 72
 PASS RF receive: expected SDR test message
 ```
 

@@ -1,0 +1,39 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/* Standalone CAN probe: do not import software/app.overlay or the radio driver.
+ * Nano directly mounted in the RF board's headers; use header positions.
+ */
+&sercom1 {
+    status = "disabled";
+};
+
+&sercom0 {
+    compatible = "atmel,sam0-spi";
+    status = "okay";
+    dipo = <2>; /* J2.8: PA06/PAD2 <- MCP251863 SDO/MISO. */
+    dopo = <0>; /* J2.10: PA04/PAD0 -> SDI; J2.9: PA05/PAD1 -> SCK. */
+    #address-cells = <1>;
+    #size-cells = <0>;
+    cs-gpios = <&porta 7 GPIO_ACTIVE_LOW>; /* J2.7. */
+    pinctrl-0 = <&can_probe_spi_default>;
+    pinctrl-names = "default";
+
+    can_probe: can-probe@0 {
+        compatible = "microchip,mcp251863-probe";
+        reg = <0>;
+        spi-max-frequency = <100000>;
+        standby-gpios = <&porta 2 GPIO_ACTIVE_HIGH>; /* J2.14, NOT PA14. */
+        int-gpios = <&porta 3 GPIO_ACTIVE_LOW>; /* J2.13, NOT PA15. */
+        status = "okay";
+    };
+};
+
+&pinctrl {
+    can_probe_spi_default: can_probe_spi_default {
+        group1 {
+            pinmux = <PA4D_SERCOM0_PAD0>,
+                     <PA5D_SERCOM0_PAD1>,
+                     <PA6D_SERCOM0_PAD2>;
+        };
+    };
+};

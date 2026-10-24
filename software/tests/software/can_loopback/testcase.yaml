@@ -1,0 +1,8 @@
+tests:
+  ocs.can.loopback:
+    harness: ztest
+    platform_allow:
+      - qemu_cortex_m3/ti_lm3s6965
+    tags:
+      - can
+      - spi
