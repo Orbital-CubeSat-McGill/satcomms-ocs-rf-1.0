@@ -5,11 +5,11 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ocs_radio_core_tests)
 
 target_include_directories(app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/radio
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/radio
 )
 
 target_sources(app PRIVATE
     src/main.c
-    ../../src/radio/at86rf215.c
+    ../../../src/radio/at86rf215.c
 )

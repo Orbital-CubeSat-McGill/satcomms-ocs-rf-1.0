@@ -27,6 +27,7 @@ static struct radio_hardware hardware = {
 };
 
 K_SEM_DEFINE(radio_irq_sem, 0, 1);
+static bool irq_callback_registered;
 
 static int zephyr_transfer(
     void *ctx,
@@ -141,19 +142,18 @@ int at86rf215_zephyr_irq_init(void)
         return result;
     }
 
-    gpio_init_callback(
-        &hardware.callback,
-        radio_irq_callback,
-        BIT(hardware.irq.pin)
-    );
-
-    result = gpio_add_callback(
-        hardware.irq.port,
-        &hardware.callback
-    );
-
-    if (result != 0) {
-        return result;
+    if (!irq_callback_registered) {
+        gpio_init_callback(
+            &hardware.callback,
+            radio_irq_callback,
+            BIT(hardware.irq.pin)
+        );
+        result = gpio_add_callback(hardware.irq.port, &hardware.callback);
+        if (result != 0) {
+            return result;
+        }
+        /* A retry must not insert the same callback node a second time. */
+        irq_callback_registered = true;
     }
 
     return gpio_pin_interrupt_configure_dt(

@@ -58,6 +58,13 @@ length/address/pointer validation and error propagation. QEMU does not emulate
 the actual radio. No CAN driver, RF packet transmission/reception, modulation,
 antenna performance or link range is tested by this application.
 
+The simple SPI API adds nine QEMU cases for initialization/presence checks,
+buffer access, errors, ISR rejection and serialization between threads. Its
+usage and physical-test instructions are in `software/docs/spi-api.md`.
+The separate `software/tests/hardware/radio_packet` application adds a 915 MHz packet
+bench. Its 21 packet-engine cases pass in QEMU; physical RF operation remains
+unverified. See `software/docs/radio-packets.md` for the Mayhem procedure.
+
 The CAN wiring has additional MCU-label/header-position inconsistencies in the
 schematic and needs a separate trace before CAN is enabled. The external
 26MHz reference must also meet the AT86RF215 datasheet's TCXO requirements;

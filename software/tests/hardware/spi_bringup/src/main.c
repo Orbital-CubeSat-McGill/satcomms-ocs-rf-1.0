@@ -4,12 +4,10 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 
-#include <ocs/at86rf215.h>
 #include <ocs/at86rf215_zephyr.h>
+#include <ocs/radio.h>
 
 #include "at86rf215_regs.h"
-
-static struct at86rf215 radio;
 
 static int check_write_readback(
     uint16_t address,
@@ -17,50 +15,50 @@ static int check_write_readback(
     size_t length
 )
 {
-    uint8_t saved[AT86RF215_IO_MAX];
-    uint8_t actual[AT86RF215_IO_MAX];
+    uint8_t saved[OCS_RADIO_MAX_TRANSFER];
+    uint8_t actual[OCS_RADIO_MAX_TRANSFER];
 
     if (length == 0 || length > sizeof(saved)) {
         return -EINVAL;
     }
 
-    int result = at86rf215_read_block(
-        &radio, address, saved, length
+    int result = ocs_radio_read(
+        address, saved, length
     );
 
     if (result != 0) {
         return result;
     }
 
-    result = at86rf215_write_block(
-        &radio, address, pattern, length
+    result = ocs_radio_write(
+        address, pattern, length
     );
 
     if (result == 0) {
-    result = at86rf215_read_block(
-        &radio, address, actual, length
-    );
+        result = ocs_radio_read(
+            address, actual, length
+        );
 
-    if (result == 0 &&
-        address == AT86RF215_BBC0_TX_BUFFER) {
-        printk("SPI received: ");
+        if (result == 0 &&
+            address == OCS_RADIO_TX_BUFFER) {
+            printk("SPI received: ");
 
-        for (size_t i = 0; i < length; i++) {
-            printk("%c", (int)actual[i]);
+            for (size_t i = 0; i < length; i++) {
+                printk("%c", (int)actual[i]);
+            }
+
+            printk("\n");
         }
 
-        printk("\n");
+        if (result == 0 &&
+            memcmp(actual, pattern, length) != 0) {
+            result = -EIO;
+        }
     }
-
-    if (result == 0 &&
-        memcmp(actual, pattern, length) != 0) {
-        result = -EIO;
-    }
-}
 
     /* Restore even if the test write or read failed. */
-    int restore = at86rf215_write_block(
-        &radio, address, saved, length
+    int restore = ocs_radio_write(
+        address, saved, length
     );
 
     if (restore != 0) {
@@ -76,8 +74,8 @@ static int check_write_readback(
         return result;
     }
 
-    result = at86rf215_read_block(
-        &radio, address, actual, length
+    result = ocs_radio_read(
+        address, actual, length
     );
 
     if (result != 0) {
@@ -89,19 +87,20 @@ static int check_write_readback(
 
 static int run_checks(void)
 {
-    int result = at86rf215_zephyr_init(&radio);
+    int result = ocs_radio_init();
 
     if (result != 0) {
-        printk("FAIL hardware init: %d\n", result);
+        printk("FAIL simple API init/presence check: %d\n", result);
         return result;
     }
+
+    printk("PASS simple API init/presence check\n");
 
     /* Read the radio's read-only part-number register over real SPI. */
     uint8_t part_number;
 
-    result = at86rf215_read_reg(
-        &radio,
-        AT86RF215_REG_RF_PN,
+    result = ocs_radio_read_reg(
+        OCS_RADIO_REG_PN,
         &part_number
     );
 
@@ -112,15 +111,14 @@ static int run_checks(void)
 
     printk(
         "RF_PN register 0x%04x: read=0x%02x expected=0x34\n",
-        (unsigned int)AT86RF215_REG_RF_PN,
+        (unsigned int)OCS_RADIO_REG_PN,
         (unsigned int)part_number
     );
 
     uint8_t id[2];
 
-    result = at86rf215_read_block(
-        &radio,
-        AT86RF215_REG_RF_PN,
+    result = ocs_radio_read(
+        OCS_RADIO_REG_PN,
         id,
         sizeof(id)
     );
@@ -146,8 +144,7 @@ static int run_checks(void)
 
     uint8_t state;
 
-    result = at86rf215_read_reg(
-        &radio,
+    result = ocs_radio_read_reg(
         AT86RF215_REG_RF09_STATE,
         &state
     );
@@ -166,8 +163,7 @@ static int run_checks(void)
 
     uint8_t mask;
 
-    result = at86rf215_read_reg(
-        &radio,
+    result = ocs_radio_read_reg(
         AT86RF215_REG_RF09_IRQM,
         &mask
     );
@@ -193,20 +189,20 @@ static int run_checks(void)
 
     const uint8_t pattern[] = "Hello world";
 
-printk("SPI sending: %s\n", (const char *)pattern);
+    printk("SPI sending: %s\n", (const char *)pattern);
 
-result = check_write_readback(
-    AT86RF215_BBC0_TX_BUFFER,
-    pattern,
-    sizeof(pattern) - 1
-);
+    result = check_write_readback(
+        OCS_RADIO_TX_BUFFER,
+        pattern,
+        sizeof(pattern) - 1
+    );
 
-if (result != 0) {
-    printk("FAIL Hello world test: %d\n", result);
-    return result;
-}
+    if (result != 0) {
+        printk("FAIL Hello world test: %d\n", result);
+        return result;
+    }
 
-printk("PASS Hello world write/readback/restore\n");
+    printk("PASS Hello world write/readback/restore\n");
 
     result = at86rf215_zephyr_irq_init();
 
@@ -218,8 +214,7 @@ printk("PASS Hello world write/readback/restore\n");
     uint8_t status[4];
 
     /* Clear existing RF09, RF24, BBC0 and BBC1 events. */
-    result = at86rf215_read_block(
-        &radio,
+    result = ocs_radio_read(
         AT86RF215_REG_RF09_IRQS,
         status,
         sizeof(status)
@@ -257,8 +252,7 @@ printk("PASS Hello world write/readback/restore\n");
         return -EIO;
     }
 
-    result = at86rf215_read_block(
-        &radio,
+    result = ocs_radio_read(
         AT86RF215_REG_RF09_IRQS,
         status,
         sizeof(status)
@@ -292,9 +286,8 @@ printk("PASS Hello world write/readback/restore\n");
     for (unsigned int i = 0; i < 100; i++) {
         uint8_t pn;
 
-        result = at86rf215_read_reg(
-            &radio,
-            AT86RF215_REG_RF_PN,
+        result = ocs_radio_read_reg(
+            OCS_RADIO_REG_PN,
             &pn
         );
 
