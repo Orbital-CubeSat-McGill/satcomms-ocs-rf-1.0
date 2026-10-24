@@ -218,7 +218,7 @@ west twister -T "$OCS_RF_REPO/software/tests/software" -p qemu_cortex_m3 --inlin
 west build -p always -b ocs_rf_1/samd21g17a "$OCS_RF_REPO/software/tests/hardware/spi_bringup" -d /tmp/ocs-rf-spi-hardware
 ```
 
-There are ten core cases, nine SPI API cases and twenty-one packet cases. The
+There are ten core cases, nine SPI API cases and twenty-five packet cases. The
 SPI API cases exercise identity and
 register access, text/binary buffers, invalid inputs, initialization failure
 and recovery, wrong-chip rejection, transport errors, ISR rejection, and two

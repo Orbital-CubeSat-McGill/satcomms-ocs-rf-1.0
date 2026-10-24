@@ -9,7 +9,7 @@
 /* Only this test executable substitutes the physical chip and IRQ adapter. */
 static struct {
     uint8_t memory[0x4000];
-    uint8_t rx_data[32];
+    uint8_t rx_data[2043];
     uint16_t rx_frame_length;
     uint8_t rx_header;
     uint8_t version;
@@ -24,6 +24,9 @@ static struct {
     bool fail_payload;
     bool payload_timeout;
     bool fail_receive_read;
+    uint16_t fail_tx_address;
+    uint16_t fail_rx_address;
+    bool slow_payload;
     int irq_error;
     int setup_error;
     int32_t tx_last_address;
@@ -60,9 +63,12 @@ static int transfer(void *ctx, const uint8_t *tx, uint8_t *rx, size_t length)
     ARG_UNUSED(ctx);
     uint16_t address = ((uint16_t)(tx[0] & 0x3F) << 8) | tx[1];
     size_t count = length - 2;
+    zassert_true(count <= 32, "Packet transfer exceeded the wired SPI limit");
     memset(rx, 0, length);
 
     if ((tx[0] & 0xC0) == 0x80) {
+        if (address == chip.fail_tx_address && address >= 0x2800) { return -EIO; }
+        if (address >= 0x2800 && chip.slow_payload) { k_msleep(2); }
         if (address == 0x2800 && chip.fail_payload) {
             return -EIO;
         }
@@ -101,6 +107,7 @@ static int transfer(void *ctx, const uint8_t *tx, uint8_t *rx, size_t length)
         }
         memcpy(chip.memory + address, tx + 2, count);
     } else {
+        if (address == chip.fail_rx_address && address >= 0x2000) { return -EIO; }
         if (address == 0x2000 && chip.fail_receive_read) {
             memset(rx, 0x99, length);
             return -EIO;
@@ -287,7 +294,7 @@ ZTEST(radio_packet, test_frame_length_and_capacity_limits)
 {
     configure();
     uint8_t data[32]; memset(data, 0xA5, sizeof(data)); size_t count = 99;
-    const uint16_t bad_lengths[] = {0, 4, 37, 2047};
+    const uint16_t bad_lengths[] = {0, 4, 37, 2047, 2048};
     for (size_t i = 0; i < ARRAY_SIZE(bad_lengths); i++) {
         queue_hello(); chip.rx_frame_length = bad_lengths[i];
         zassert_equal(ocs_radio_receive(data, sizeof(data), &count, 20), -EMSGSIZE);
@@ -317,10 +324,10 @@ ZTEST(radio_packet, test_cleanup_failure_invalidates_configuration)
 
 ZTEST(radio_packet, test_invalid_packet_arguments)
 {
-    configure(); uint8_t data[33] = {0}; size_t count = 99;
+    configure(); static uint8_t data[2044]; size_t count = 99;
     zassert_equal(ocs_radio_send(NULL, 1, 10), -EINVAL);
     zassert_equal(ocs_radio_send(data, 0, 10), -EINVAL);
-    zassert_equal(ocs_radio_send(data, 33, 10), -EINVAL);
+    zassert_equal(ocs_radio_send(data, sizeof(data), 10), -EINVAL);
     zassert_equal(ocs_radio_send(data, 1, 0), -EINVAL);
     zassert_equal(ocs_radio_receive(NULL, 1, &count, 10), -EINVAL);
     zassert_equal(ocs_radio_receive(data, 0, &count, 10), -EINVAL);
@@ -332,18 +339,74 @@ ZTEST(radio_packet, test_invalid_packet_arguments)
 ZTEST(radio_packet, test_maximum_binary_payload)
 {
     configure();
-    uint8_t data[32];
+    static uint8_t data[2043];
     for (size_t i = 0; i < sizeof(data); i++) { data[i] = (uint8_t)(i * 9); }
-    zassert_ok(ocs_radio_send(data, sizeof(data), 20));
-    zassert_equal(chip.memory[0x0306], 36);
+    zassert_ok(ocs_radio_send(data, sizeof(data), 1000));
+    zassert_equal(chip.memory[0x0306], 0xFF);
+    zassert_equal(chip.memory[0x0307], 0x07);
     zassert_mem_equal(chip.memory + 0x2800, data, sizeof(data));
-    zassert_equal(chip.tx_last_address, 35, "FCS placeholders must follow all 32 payload bytes");
+    const uint8_t padding[4] = {0};
+    zassert_mem_equal(chip.memory + 0x2FFB, padding, sizeof(padding));
+    zassert_equal(chip.tx_last_address, 2046, "FCS placeholders must follow the payload");
     memcpy(chip.rx_data, data, sizeof(data));
-    chip.rx_frame_length = 36; chip.rx_pending = true;
-    uint8_t received[32] = {0}; size_t count = 0;
-    zassert_ok(ocs_radio_receive(received, sizeof(received), &count, 20));
-    zassert_equal(count, 32);
+    chip.rx_frame_length = 2047; chip.rx_pending = true;
+    static uint8_t received[2043]; size_t count = 0;
+    zassert_ok(ocs_radio_receive(received, sizeof(received), &count, 1000));
+    zassert_equal(count, 2043);
     zassert_mem_equal(received, data, sizeof(data));
+}
+
+ZTEST(radio_packet, test_payloads_cross_spi_chunk_boundaries)
+{
+    configure();
+    uint8_t data[65], received[65];
+    for (size_t i = 0; i < sizeof(data); i++) { data[i] = (uint8_t)(i + 1); }
+    const size_t sizes[] = {31, 32, 33, 63, 64, 65};
+    for (size_t i = 0; i < ARRAY_SIZE(sizes); i++) {
+        size_t size = sizes[i], count = 0;
+        zassert_ok(ocs_radio_send(data, size, 1000));
+        zassert_mem_equal(chip.memory + 0x2800, data, size);
+        zassert_equal(chip.tx_last_address, size + 3);
+        memcpy(chip.rx_data, data, size);
+        chip.rx_frame_length = size + 4; chip.rx_pending = true;
+        memset(received, 0, sizeof(received));
+        zassert_ok(ocs_radio_receive(received, sizeof(received), &count, 1000));
+        zassert_equal(count, size);
+        zassert_mem_equal(received, data, size);
+    }
+}
+
+ZTEST(radio_packet, test_later_tx_chunk_failure_never_transmits)
+{
+    configure();
+    uint8_t data[65] = {0};
+    chip.fail_tx_address = 0x2820;
+    zassert_equal(ocs_radio_send(data, sizeof(data), 1000), -EIO);
+    zassert_equal(chip.tx_commands, 0);
+    zassert_equal(ocs_radio_send("x", 1, 1000), -EACCES);
+}
+
+ZTEST(radio_packet, test_later_rx_chunk_failure_preserves_entire_output)
+{
+    configure();
+    memset(chip.rx_data, 0x11, 65);
+    chip.rx_frame_length = 69; chip.rx_pending = true;
+    chip.fail_rx_address = 0x2020;
+    uint8_t received[65], expected[65]; size_t count = 99;
+    memset(received, 0xA5, sizeof(received));
+    memset(expected, 0xA5, sizeof(expected));
+    zassert_equal(ocs_radio_receive(received, sizeof(received), &count, 1000), -EIO);
+    zassert_mem_equal(received, expected, sizeof(expected));
+    zassert_equal(count, 99);
+}
+
+ZTEST(radio_packet, test_deadline_expires_while_loading_large_payload)
+{
+    configure();
+    static uint8_t data[2043];
+    chip.slow_payload = true;
+    zassert_equal(ocs_radio_send(data, sizeof(data), 5), -ETIMEDOUT);
+    zassert_equal(chip.tx_commands, 0);
 }
 
 ZTEST(radio_packet, test_irq_wait_error_invalidates_configuration)

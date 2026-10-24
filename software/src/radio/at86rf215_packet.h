@@ -8,6 +8,10 @@
 struct at86rf215_packet {
     struct at86rf215 *radio;
     bool configured;
+    /* Staging preserves the caller's output if a later SPI chunk fails.
+     * Lives with the singleton radio, not on the caller's small thread stack.
+     */
+    uint8_t rx_payload[OCS_RADIO_MAX_PAYLOAD];
 };
 
 int at86rf215_packet_configure(struct at86rf215_packet *packet,

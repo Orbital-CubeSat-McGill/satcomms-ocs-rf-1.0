@@ -3,13 +3,16 @@
 ## Status and purpose
 
 This adds a real RF packet driver above the wired SPI API. The separate packet
-bench application prepares the radio, receives packets, and sends one packet
-when the Nano's SW0 button is pressed. The original application under
+bench application prepares the radio, receives packets, and sends a batch of
+ten packets when the Nano's SW0 button is pressed. There is a one-second delay
+between sends; reception resumes after the batch. The original application under
 `software/tests/hardware/spi_bringup/src/main.c` is the separate PN/VN-only SPI diagnostic.
 
-All 40 software tests pass in QEMU, and both applications compile for SAMD21.
-Physical RF operation is **not yet verified**: the boards were
-unavailable during implementation. No capture/replay success is claimed.
+All 44 software tests pass in QEMU, and both applications compile for SAMD21.
+On October 24, 2026, the operator reported running the enlarged-packet bench
+and observing its transmission on an SDR. This records externally observed RF
+activity; payload decoding, calibrated RF measurements and CRC-valid receive/replay
+remain unverified.
 
 ## How the pieces work
 
@@ -42,7 +45,17 @@ the transmitted waveform and later transmit that recording back.
 - Uncoded IEEE framing, SFD0, 16-octet preamble; TX whitening disabled.
 - Hardware-generated CRC-32, hardware receive CRC filter, plus software checks
   of CRC status, received FCS type and frame length.
-- Application payload: 1..32 bytes. The CRC adds four on-air bytes.
+- Application payload: 1..2043 bytes. The maximum PSDU is 2047 bytes including
+  the four-byte CRC (datasheet sections 6.13.1 and 6.13.3).
+- The bench sample fills 2043 bytes by repeating `Hello world from OCS RF 915 MHz!`
+  and truncating the last repetition. Each frame is approximately 330.72 ms
+  on air: (16-byte preamble + 2-byte SFD + 2-byte PHR + 2047-byte PSDU) at 50 kb/s;
+  the one-second sleep is between completed sends, not continuous RF output.
+- RF payloads cross SPI in at most 32-byte chunks while the radio mutex stays
+  locked. The raw register/buffer API still accepts only 1..32 bytes per call.
+- The bench uses 1000 ms send/receive timeouts to accommodate long frames.
+  Its TX/RX arrays and the driver's RX staging storage live in static RAM,
+  avoiding multi-kilobyte allocations on the Nano's small thread stack.
 - Sample transmit power setting 0: the chip's minimum setting, **not 0 dBm**.
   Actual output power and frequency accuracy require measurement.
 
@@ -122,7 +135,7 @@ It does not issue a transmit command.
 
 Sending clears old interrupt flags and programs the total frame length first.
 Writing the length resets the chip's buffer-write tracking. The driver then
-writes your payload and four placeholder CRC bytes into TX memory, prepares
+writes your payload in bounded SPI chunks and four placeholder CRC bytes into TX memory, prepares
 the transmitter, starts TX, waits for TXFE and checks for buffer under-run.
 The placeholders are required for underrun tracking even when automatic CRC
 is enabled (datasheet section 6.13.4). The chip generates the actual CRC;
@@ -175,7 +188,7 @@ export ZEPHYR_BASE=/Users/muhammadaliullah/zephyrproject/zephyr
 export OCS_RF_REPO=/Users/muhammadaliullah/Documents/satcomms-ocs-rf-1.0
 cd "$ZEPHYR_BASE"
 
-# All simulated tests: ten core, nine SPI API, twenty-one packet cases.
+# All simulated tests: ten core, nine SPI API, twenty-five packet cases.
 west twister -T "$OCS_RF_REPO/software/tests/software" -p qemu_cortex_m3 --inline-logs --outdir /tmp/ocs-rf-packet-tests
 
 # Existing SPI-only diagnostic application.
@@ -228,11 +241,12 @@ configuration and the PLL checks succeed:
 ```text
 PASS RF configuration: 915 MHz, 2-FSK 50 kb/s, CRC32
 PLL readiness checked; radio returns to TRXOFF between operations
-Ready: receiving. Press SW0 for about half a second to send once.
+Ready: receiving. Hold SW0 for about two seconds to send 10 packets,
+with a one-second delay between packets (2043 payload bytes each).
 ```
 
 Keep the button released initially. A button held at boot must be released
-before it can trigger a transmission. The sample receives in repeated 100 ms
+before it can trigger a transmission. The sample receives in repeated 1000 ms
 windows and prints a waiting message about every five seconds.
 
 ## Mayhem capture, then replay back to the green board
@@ -244,9 +258,10 @@ has already happened. Exact menus depend on your installed Mayhem version.
    **500 kHz**, format **C16**, and a suitable SD card. The wanted radio signal
    is at 915.000 MHz; this deliberate 100 kHz offset keeps it away from the
    receiver's center/DC artifact while inside the capture bandwidth.
-2. Start recording. Press and hold Nano SW0 for about half a second, then
-   release it. Each new press sends one `Hello world` packet. Record several
-   presses over a few seconds and confirm local `TX complete` messages.
+2. Start recording. Press and hold Nano SW0 for about two seconds, then
+   release it. Each new press starts ten 2043-byte packets with a one-second
+   delay between sends. Record the whole batch and confirm the numbered local
+   `TX complete` messages. Wait for the batch to finish before another press.
 3. Stop Capture. Preserve the resulting `.C16` file **and matching `.TXT`
    metadata**. Check the reported dropped samples; start with a capture
    reporting no drops. A waterfall burst alone does not identify the payload.
@@ -259,9 +274,9 @@ has already happened. Exact menus depend on your installed Mayhem version.
 6. Look for actual terminal output:
 
 ```text
-RX CRC OK (11 bytes): Hello world
-RX hex: 48 65 6c 6c 6f 20 77 6f 72 6c 64
-PASS RF receive: expected Hello world
+RX CRC OK (2043 bytes; showing first 64): Hello world from OCS RF 915 MHz!Hello world from OCS RF 915 MHz!
+RX hex: 48 65 6c 6c 6f 20 77 6f 72 6c 64 20 66 72 6f 6d 20 4f 43 53 20 52 46 20 39 31 35 20 4d 48 7a 21 48 65 6c 6c 6f 20 77 6f 72 6c 64 20 66 72 6f 6d 20 4f 43 53 20 52 46 20 39 31 35 20 4d 48 7a 21
+PASS RF receive: expected SDR test message
 ```
 
 7. Stop Replay. Matching packet messages should stop. That is a useful negative
@@ -278,7 +293,8 @@ or Capture screen establishes.
 The packet tests run the real public API, mutex, SPI command encoder and packet
 engine with a test-only chip/IRQ model. They check the programmed profile,
 CRC-inclusive TX lengths, length-before-buffer ordering and required FCS
-placeholders (including a 32-byte payload), stale events, PLL/IRQ/transport faults,
+placeholders (including a 2043-byte payload), chunk boundaries and later-chunk
+failures, loading deadlines, stale events, PLL/IRQ/transport faults,
 timeouts, contention, under-run, CRC/header rejection, receive sizes, output
 preservation, cleanup invalidation, raw-write invalidation and ISR rejection.
 They do not emulate the analog radio, oscillator, antenna, waveform or HackRF.

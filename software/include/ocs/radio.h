@@ -12,7 +12,8 @@ extern "C" {
 #define OCS_RADIO_REG_VN       0x000EU
 #define OCS_RADIO_RX_BUFFER    0x2000U
 #define OCS_RADIO_TX_BUFFER    0x2800U
-#define OCS_RADIO_MAX_PAYLOAD  32U
+/* The 11-bit PHY frame length includes the four-byte CRC-32. */
+#define OCS_RADIO_MAX_PAYLOAD  2043U
 
 struct ocs_radio_config {
     uint32_t frequency_hz;
@@ -75,6 +76,9 @@ int ocs_radio_configure(const struct ocs_radio_config *config);
 
 /**
  * Transmit 1..OCS_RADIO_MAX_PAYLOAD payload bytes; hardware appends CRC-32.
+ * Maximum payload is 2043 bytes: 2047-byte PSDU minus four CRC bytes.
+ * Packet buffers are transferred in chunks; the raw SPI limit stays 32 bytes.
+ * At 50 kb/s the largest frame takes about 331 ms on air; allow e.g. 1000 ms.
  * Returns 0 after TXFE, no under-run and successful TRXOFF cleanup. This
  * indicates local transmission completion, not acknowledgement by a peer.
  * Requires configure; -EACCES means packet configuration is unavailable.

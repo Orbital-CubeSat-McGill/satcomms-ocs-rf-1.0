@@ -8,7 +8,7 @@
 #define CRC_BYTES 4U
 #define CLEANUP_MS 20
 #define CONFIGURE_MS 50
-BUILD_ASSERT(OCS_RADIO_MAX_PAYLOAD <= AT86RF215_IO_MAX);
+BUILD_ASSERT(OCS_RADIO_MAX_PAYLOAD + CRC_BYTES <= 2047U);
 
 static int read_block(struct at86rf215_packet *p, uint16_t address,
                        void *data, size_t length)
@@ -24,6 +24,37 @@ static int write_block(struct at86rf215_packet *p, uint16_t address,
     int result = at86rf215_write_block(p->radio, address, data, length);
     if (result != 0) { p->configured = false; }
     return result;
+}
+
+/* A single RF frame can span many bounded SPI transactions. The public API
+ * keeps the radio mutex locked throughout all chunks and the RF operation.
+ */
+static int write_payload(struct at86rf215_packet *p, const uint8_t *data,
+                         size_t length, int64_t deadline)
+{
+    for (size_t offset = 0; offset < length;) {
+        if (k_uptime_get() >= deadline) { return -ETIMEDOUT; }
+        size_t count = MIN(length - offset, AT86RF215_IO_MAX);
+        int result = write_block(p, (uint16_t)(OCS_RADIO_TX_BUFFER + offset),
+                                 data + offset, count);
+        if (result != 0) { return result; }
+        offset += count;
+    }
+    return 0;
+}
+
+static int read_payload(struct at86rf215_packet *p, size_t length,
+                        int64_t deadline)
+{
+    for (size_t offset = 0; offset < length;) {
+        if (k_uptime_get() >= deadline) { return -ETIMEDOUT; }
+        size_t count = MIN(length - offset, AT86RF215_IO_MAX);
+        int result = read_block(p, (uint16_t)(OCS_RADIO_RX_BUFFER + offset),
+                                p->rx_payload + offset, count);
+        if (result != 0) { return result; }
+        offset += count;
+    }
+    return 0;
 }
 
 static int read_byte(struct at86rf215_packet *p, uint16_t address, uint8_t *value)
@@ -181,11 +212,11 @@ int at86rf215_packet_send(struct at86rf215_packet *p,
                                        frame_length, sizeof(frame_length));
     }
     if (result == 0) {
-        result = write_block(p, OCS_RADIO_TX_BUFFER, data, length);
+        result = write_payload(p, data, length, deadline);
     }
     /* Section 6.13.4 requires FCS space for underrun tracking even with
      * automatic CRC. Hardware replaces these placeholders with the real FCS.
-     * A separate transfer keeps the 32-byte payload within the SPI limit.
+     * Payload chunks and this separate transfer stay within the SPI limit.
      */
     const uint8_t crc_padding[CRC_BYTES] = {0};
     if (result == 0) {
@@ -212,7 +243,6 @@ int at86rf215_packet_receive(struct at86rf215_packet *p,
 {
     if (!p->configured) { return -EACCES; }
     if (data == NULL || length == NULL || capacity == 0) { return -EINVAL; }
-    uint8_t payload[OCS_RADIO_MAX_PAYLOAD];
     size_t payload_length = 0;
     uint8_t events[4];
     int result = read_events(p, events);
@@ -247,12 +277,11 @@ int at86rf215_packet_receive(struct at86rf215_packet *p,
         }
     }
     if (result == 0) {
-        result = read_block(p, OCS_RADIO_RX_BUFFER,
-                                      payload, payload_length);
+        result = read_payload(p, payload_length, deadline);
     }
     result = finish(p, result);
     if (result == 0) {
-        memcpy(data, payload, payload_length);
+        memcpy(data, p->rx_payload, payload_length);
         *length = payload_length;
     }
     return result;

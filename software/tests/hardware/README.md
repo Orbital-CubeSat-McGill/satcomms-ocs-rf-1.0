@@ -7,10 +7,11 @@ board checks passed. They contain no simulated radio.
 | Program | What runs on the board | Pass evidence |
 |---|---|---|
 | [spi_bringup/src/main.c](spi_bringup/src/main.c) | Initializes/resets the radio and reads PN/VN over SPI. Checks PN against `0x34` and prints VN; no register/buffer writes, IRQ-status clearing or RF transmission. | Actual terminal output with identification values and `BRING-UP PASS (0)`. |
-| [radio_packet/src/main.c](radio_packet/src/main.c) | RF profile/PLL readiness, one Hello world TX per button press, CRC-checked packet RX. | Configuration output, external HackRF capture, then CRC-valid Hello world reception during replay. Local TX completion alone does not establish reception. |
+| [radio_packet/src/main.c](radio_packet/src/main.c) | RF profile/PLL readiness, ten 2043-byte packets per SW0 press with one-second delays, CRC-checked packet RX. Payload repeats Hello world text. | Configuration output, external HackRF capture, then a matching CRC-valid 2043-byte reception during replay. Local TX completion alone does not establish reception. |
 
-The earlier low-level SPI diagnostic passed on the board. The newer public API
-and RF packet program still need physical runs; hardware is currently unavailable.
+The earlier low-level SPI diagnostic passed on the board. On October 24, 2026,
+the operator reported observing the enlarged-packet bench transmission on an SDR.
+Payload decoding and CRC-valid receive/replay remain unverified.
 
 ## Build each separately
 
