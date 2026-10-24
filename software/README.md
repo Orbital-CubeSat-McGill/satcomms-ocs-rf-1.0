@@ -4,6 +4,12 @@ The application is configured for a SAMD21 Curiosity Nano mounted directly on
 the RF board headers. See `software/boards/ocs_rf_1/README.md` for the traced
 pin mapping and the distinction between schematic labels and actual MCU pins.
 
+The current application only initializes/resets the radio and reads its PN
+(part number) and VN (version number) over SPI. It checks PN against `0x34`
+using a single-register read and a two-byte block read; VN is printed from
+the block read. The Hello world memory test, register writes, state checks,
+interrupt checks and 100-read loop have been removed from this application.
+
 ## Activate the existing Mac environment
 
 ```sh
@@ -53,6 +59,7 @@ the console open restarts the checks and captures the startup messages.
 
 ## Verified hardware result: October 22, 2026
 
+This records the earlier full diagnostic, before it was reduced to PN/VN reads.
 The mounted Nano was identified by OpenOCD as SAMD21G17D (128KB flash, 16KB
 RAM). The image was flashed and verified, then the serial console reported
 PN=0x34, VN=0x03 and `BRING-UP PASS (0)`. All bring-up stages passed.
