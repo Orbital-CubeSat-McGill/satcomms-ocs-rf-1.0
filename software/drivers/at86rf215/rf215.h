@@ -14,8 +14,18 @@ struct rf215_api {
 };
 
 struct rf215_config {
-    struct gpio_dt_spec btn;
+    struct spi_dt_spec rf215_spi;
+    struct gpio_dt_spec rf215_rst;
+    struct gpio_dt_spec rf215_irq;
     uint8_t id;
+};
+
+// Set struct for chip irq triggers and lock spi access
+struct rf215_trigs {
+    const struct device *dev;
+    struct gpio_callback irq_cb;
+    struct k_work irq_work;
+    struct k_mutex bus_lock;   /* if other threads also touch the chip */
 };
 
 #endif /*ZEPHYR_DRIVERS_AT86RF215_H
