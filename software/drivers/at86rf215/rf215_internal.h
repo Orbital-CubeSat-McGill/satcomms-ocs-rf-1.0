@@ -16,16 +16,16 @@ static int rf215_reset(const struct device *dev);
 
 
 //Abstraction layer over SPI driver 
-static int rf215_blk_write(
+int rf215_blk_write(
 	const struct device *dev,
 	uint16_t address,
 	const uint8_t *data,
 	size_t length
 );
-static int rf215_blk_read(
+int rf215_blk_read(
 	const struct device *dev,
 	uint16_t address,
-	const uint8_t *data,
+	uint8_t *data,
 	size_t length
 );
 
