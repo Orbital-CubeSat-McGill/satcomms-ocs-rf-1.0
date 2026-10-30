@@ -2,29 +2,12 @@
 
 #include <errno.h>
 #include <zephyr/logging/log.h>
-
 #include "at86rf215.h"
 
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
 LOG_MODULE_REGISTER(rf215);
 
-//hardware configuration to call zephyr apis??
-struct radio_hardware {
-    struct spi_dt_spec spi;
-    struct gpio_dt_spec reset;
-    struct gpio_dt_spec irq;
-    struct gpio_callback callback;
-};
-
-static struct radio_hardware hardware = {
-    .spi = SPI_DT_SPEC_GET(
-        RADIO_NODE,
-        SPI_WORD_SET(8) | SPI_TRANSFER_MSB
-    ),
-    .reset = GPIO_DT_SPEC_GET(RADIO_NODE, reset_gpios),
-    .irq = GPIO_DT_SPEC_GET(RADIO_NODE, irq_gpios)
-};
 
 //Forward declarations
 //private
@@ -67,12 +50,13 @@ static int rf215_init(const struct device *dev) {
 
     const struct rf215_config *cfg = (const struct rf215_config *)dev->config;
 
-    const struct gpio_dt_spec *rf215 = &cfg->rf215;
+    const struct spi_dt_spec *rf215_spi = &cfg->rf215;
+    const struct gpio_dt_spec *rf215_gpio = &cfg->rf215;
 
     LOG_DBG("Initializing Radio module (instance: %u)\r\n", cfg->id);
 
-    if (!spi_is_ready_dt(&hardware.spi) ||
-        !gpio_is_ready_dt(&hardware.reset)) {
+    if (!spi_is_ready_dt(rf215_spi) ||
+        !gpio_is_ready_dt(rf215_gpio)) {
         return -ENODEV;
     }
     result = gpio_pin_configure_dt(
@@ -90,7 +74,6 @@ static int rf215_init(const struct device *dev) {
     radio->bus.ctx = &hardware;
     radio->bus.transfer = zephyr_transfer;
 
-    //return at86rf215_zephyr_reset();
     return 0;
 }
 
