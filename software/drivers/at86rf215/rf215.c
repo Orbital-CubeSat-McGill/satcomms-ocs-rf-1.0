@@ -12,7 +12,6 @@ LOG_MODULE_REGISTER(rf215);
 
 //forward declarations of functions passed through to the api
 //switch uint8_t to it's respective enum if applicable
-static int rf215_get_state(const struct device *dev, uint8_t *state); //determine state of transceiver
 static int rf215_confirm_conn(const struct device *dev); //confirm at86rf215 is connected and alive
 static int rf215_set_mode(const struct device *dev, uint8_t mode); //set Mode of transceiver (ex:sleep)
 static int rf215_bb_conf(const struct device *dev, struct rf215_bbX_config); //set radio configuration from struct
@@ -116,6 +115,7 @@ static int rf215_init(const struct device *dev) {
 
     LOG_DBG("Initializing Radio module interrupts (instance: %u)\r\n", cfg->id);
 
+    // Call reset here to set Register configurations in init
     rf215_reset(dev);
 
     gpio_init_callback(&data->irq_cb, rf215_irq_isr, BIT(cfg->rf215_irq.pin));
@@ -164,15 +164,16 @@ static int rf215_reset(const struct device *dev)
 }
 
 
-//Public funcitions
 static int rf215_state_get(const struct device *dev, uint8_t *state) 
 {
-    int result;
     const struct rf215_config *cfg = (const struct rf215_config *)dev->config;
-    // implementation with spi later
+
+    return rf215_blk_read(dev,
+
 }
 
 
+//Public funcitions
 
 //-------------------------------------------------------------
 //devicetree handling: MacroBatics

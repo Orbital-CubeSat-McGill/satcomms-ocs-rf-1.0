@@ -20,6 +20,8 @@ static void rf215_irq_isr(  const struct device *port,
 static int rf215_init(const struct device *dev);
 static int rf215_reset(const struct device *dev);
 
+//General purpose functions
+static int rf215_get_state(const struct device *dev, uint8_t *state); //determine state of transceiver
 
 
 //Abstraction layer over SPI driver 
