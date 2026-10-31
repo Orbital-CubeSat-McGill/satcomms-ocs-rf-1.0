@@ -4,6 +4,15 @@
 
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
+// RF09 and RF25 status byte bits
+#define RF_TRXRDY BIT(1)
+#define RF_TRXERR BIT(4)
+
+// TODO BBC0 and BBC1 status byte bits
+
+
+
+
 
 //Initialization of module
 
@@ -31,4 +40,4 @@ int rf215_blk_read(
 
 
 //
-#endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H
+#endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H*/

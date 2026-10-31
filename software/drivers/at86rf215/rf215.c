@@ -4,6 +4,7 @@
 #include <zephyr/logging/log.h>
 #include "rf215.h"
 #include "rf215_internal.h"
+#include "rf215_regs.h"
 
 
 LOG_MODULE_REGISTER(rf215);
@@ -17,14 +18,30 @@ static int rf215_state_get(const struct device *dev, uint8_t *state);
 //--------------------------------------------------------------
 //Private Functions definition
 /* ISR context: no SPI, no blocking */
-static void rf215_irq_isr(const struct device *port,
-                              struct gpio_callback *cb, uint32_t pins)
+static void rf215_irq_isr(const struct device *port, struct gpio_callback *cb, uint32_t pins)
 {
     struct rf215_data *data = CONTAINER_OF(cb, struct rf215_data, irq_cb);
     const struct rf215_config *cfg = data->dev->config;
 
-    gpio_pin_interrupt_configure_dt(&cfg->irq_gpio, GPIO_INT_DISABLE);
+    gpio_pin_interrupt_configure_dt(&cfg->rf215_irq, GPIO_INT_DISABLE);
     k_work_submit(&data->irq_work);
+}
+
+static void rf215_post_events(const uint8_t* irqs, struct rf215_data* data) {
+    uint32_t events = 0;
+
+    if (irqs[0] & RF_TRXRDY) {
+        events |= RF215_EVT_TRXRDY;
+    }
+    if (irqs[0] & RF_TRXERR) {
+        events |= RF215_EVT_ERROR;
+    }
+
+    // TODO implement the rest of the interrupt signals 
+
+    if (events != 0) {
+        k_event_post(&data->events, events);
+    }
 }
 
 /* Thread context: SPI is fine here */
@@ -35,13 +52,15 @@ static void rf215_irq_work(struct k_work *work)
     const struct rf215_config *cfg = dev->config;
     uint8_t irqs[4];  /* RF09, RF24, BBC0, BBC1 */
 
-    if (rf215_read(dev, RF09_IRQS, irqs, sizeof(irqs)) == 0) {
-        //for later implementation
-        /* reading clears the flags; dispatch on irqs[0..3] here */
-        /* call internal function to handle interrupt */
+    int read_return = rf215_blk_read(dev, REG_RF09_IRQS, irqs, sizeof(irqs));
+    if (read_return == 0) {
+        rf215_post_events(irqs, data);
+    }
+    else {
+        LOG_ERR("Could not read from IRQ registers, Error Code: %d\n", read_return);
     }
 
-    gpio_pin_interrupt_configure_dt(&cfg->irq_gpio, GPIO_INT_LEVEL_ACTIVE);
+    gpio_pin_interrupt_configure_dt(&cfg->rf215_irq, GPIO_INT_LEVEL_ACTIVE);
 }
 
 static int rf215_init(const struct device *dev) {
@@ -57,6 +76,7 @@ static int rf215_init(const struct device *dev) {
     data->dev = dev;
     k_mutex_init(&data->bus_lock);
     k_work_init(&data->irq_work, rf215_irq_work);
+    k_event_init(&data->events);
 
     LOG_DBG("Initializing Radio module (instance: %u)\r\n", cfg->id);
 
@@ -90,14 +110,21 @@ static int rf215_init(const struct device *dev) {
 
     rf215_reset(dev);
 
-    gpio_init_callback(&data->irq_cb, rf215_irq_isr, BIT(cfg->irq_gpio.pin));
-    result = gpio_add_callback(cfg->irq_gpio.port, &data->irq_cb);
+    gpio_init_callback(&data->irq_cb, rf215_irq_isr, BIT(cfg->rf215_irq.pin));
+    result = gpio_add_callback(cfg->rf215_irq.port, &data->irq_cb);
     if (result) {
         return result;
     }
 
+    //checks and discards stale IRQ state
+    uint8_t stale_irqs[4];
+    int irq_result = rf215_blk_read(dev, REG_RF09_IRQS, stale_irqs, sizeof(stale_irqs)) ;
+    if (irq_result != 0) {
+        LOG_ERR("Could not read from IRQ registers. Error Code: %d\n", irq_result);
+        return irq_result;
+    }
 
-    return gpio_pin_interrupt_configure_dt(&cfg->irq_gpio, GPIO_INT_LEVEL_ACTIVE);
+    return gpio_pin_interrupt_configure_dt(&cfg->rf215_irq, GPIO_INT_LEVEL_ACTIVE);
 }
 
 static int rf215_reset(const struct device *dev) 
