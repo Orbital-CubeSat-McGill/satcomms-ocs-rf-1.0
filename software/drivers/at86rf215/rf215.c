@@ -160,6 +160,8 @@ static int rf215_reset(const struct device *dev)
     k_msleep(10);
 
     // set all register configurations here
+    // set operating mode to baseband for both transceivers
+    rf215_blk_write(dev, REG_RF_IQIFC1, RF215_MODE_BBRF, 1);
     return 0;
 }
 

@@ -34,6 +34,7 @@ struct rf215_data {
     struct k_work irq_work;
     struct k_mutex bus_lock;   /* if other threads also touch the chip */
     struct k_event events;
+    rf215_chpm_t op_mode;
 };
 
 #endif /*ZEPHYR_DRIVERS_AT86RF215_H*/

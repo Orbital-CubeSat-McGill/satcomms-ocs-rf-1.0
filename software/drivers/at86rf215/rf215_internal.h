@@ -157,17 +157,17 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RF_MODE_BBRF =
+  RF215_MODE_BBRF =
       0x0, //!< RF enabled, baseband (BBC0, BBC1) enabled, I/Q IF disabled
-  AT86RF215_RF_MODE_RF =
+  RF215_MODE_RF =
       0x1, //!< RF enabled, baseband (BBC0, BBC1) disabled, I/Q IF enabled
-  AT86RF215_RF_MODE_BBRF09 =
+  RF215_MODE_BBRF09 =
       0x4, //!< RF enabled, baseband (BBC0) disabled and (BBC1) enabled, I/Q IF
            //!< for sub-GHz Transceiver enabled
-  AT86RF215_RF_MODE_BBRF24 =
+  RF215_MODE_BBRF24 =
       0x5 //!< RF enabled, baseband (BBC1) disabled and (BBC0) enabled, I/Q IF
           //!< for 2.4GHz Transceiver enabled
-} at86rf215_chpm_t;
+} rf215_chpm_t;
 
 /**
  * Ramp up/down time of the power amplifier
