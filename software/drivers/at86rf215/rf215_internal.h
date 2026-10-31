@@ -5,6 +5,13 @@
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
 
+// RF09 and RF24 status byte bits
+#define RF_TRXRDY BIT(1)
+#define RF_TRXERR BIT(4)
+
+// TODO BBC0 and BBC1 status byte bits
+
+
 //Initialization of module
 
 static void rf215_irq_isr(  const struct device *port,
@@ -483,4 +490,4 @@ typedef enum
   AT86RF215_PAVC_2_4V = 2  //!< 2.4V
 } at86rf215_pavc_t;
 
-#endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H
+#endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H*/
