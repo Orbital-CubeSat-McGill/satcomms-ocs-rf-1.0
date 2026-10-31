@@ -10,9 +10,17 @@ LOG_MODULE_REGISTER(rf215);
 
 
 //forward declarations of functions passed through to the api
-static int rf215_state_get(const struct device *dev, uint8_t *state);
-
-
+//switch uint8_t to it's respective enum if applicable
+static int rf215_get_state(const struct device *dev, uint8_t *state); //determine state of transceiver
+static int rf215_confirm_conn(const struct device *dev); //confirm at86rf215 is connected and alive
+static int rf215_set_mode(const struct device *dev, uint8_t mode); //set Mode of transceiver (ex:sleep)
+static int rf215_bb_conf(const struct device *dev, struct rf215_bbX_config); //set radio configuration from struct
+static int rf215_set_value(const struct device *dev, struct radio, uint8_t set_variable); //set a varible from set_values enum to value
+static int rf215_get_value(const struct device *dev, uint8_t *value, uint8_t get_variable);//get a varible from get_values enum to value
+static int rf215_bb_enable(const struct device *dev, struct radio, uint8_t en);
+static int rf215_tx_frame(const struct device *dev, struct radio, size_t timeout_ms);
+static int rf215_rx_frame(const struct device *dev, struct radio, size_t timeout_ms);
+static int rf215_rx(const struct device *dev, struct radio, size_t timeout_ms);
 
 //--------------------------------------------------------------
 //Private Functions definition
