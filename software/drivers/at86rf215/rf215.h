@@ -21,7 +21,7 @@ struct rf215_config {
 };
 
 // Set struct for chip irq triggers and lock spi access
-struct rf215_trigs {
+struct rf215_data {
     const struct device *dev;
     struct gpio_callback irq_cb;
     struct k_work irq_work;
