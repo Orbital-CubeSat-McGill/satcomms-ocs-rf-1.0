@@ -164,12 +164,44 @@ static int rf215_reset(const struct device *dev)
 }
 
 
-static int rf215_state_get(const struct device *dev, uint8_t *state) 
+static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215_radio_t radio)
 {
     const struct rf215_config *cfg = (const struct rf215_config *)dev->config;
 
-    return rf215_blk_read(dev,
-
+    if (!state) {
+        return -AT86RF215_INVAL_PARAM;
+    }
+    uint8_t  val = 0;
+    uint16_t reg = 0;
+    switch (radio) {
+        case RF24:
+            reg = REG_RF24_STATE;
+            break;
+        case RF09:
+            reg = REG_RF09_STATE;
+            break;
+        default:
+            return -EINVAL;
+    }
+    ret = rf215_blk_read(dev, reg, &val, 1);
+    if (ret) {
+        return ret;
+    }
+    /* Sanity check on the returned value */
+    val &= 0x7;
+    switch (val) {
+        case STATE_RF_TRXOFF:
+        case STATE_RF_TXPREP:
+        case STATE_RF_TX:
+        case STATE_RF_RX:
+        case STATE_RF_TRANSITION:
+        case STATE_RF_RESET:
+            *state = (rf215_state_t)val;
+            break;
+        default:
+            return -EINVAL;
+    }
+    return AT86RF215_OK;
 }
 
 

@@ -21,7 +21,7 @@ static int rf215_init(const struct device *dev);
 static int rf215_reset(const struct device *dev);
 
 //General purpose functions
-static int rf215_get_state(const struct device *dev, uint8_t *state); //determine state of transceiver
+static int rf215_get_state(const struct device *dev, uint8_t *state, rf215_radio_t radio); //determine state of transceiver
 
 
 //Abstraction layer over SPI driver 
@@ -37,9 +37,15 @@ int rf215_blk_read(
 	uint8_t *data,
 	size_t length
 );
+int rf215_cmd(
+        const struct device *dev,
+        rf_cmd_t cmd, 
+        rf215_radio_t radio
+);
 
 
-//Enums from gitlab project
+//Enums from libre space project
+//Comment out all enums until they are used
 /**
  * Maximum PDU size that the frame buffer can hold
  */
@@ -47,7 +53,6 @@ int rf215_blk_read(
 
 /**
  * AT86RF215 driver error codes
- */
 typedef enum
 {
   AT86RF215_OK = 0,        //!< No error
@@ -63,25 +68,28 @@ typedef enum
   AT86RF215_TIMEOUT,       //!< A timeout event occured
   AT86RF215_PLL_UNLOCK     //!< The PLL lock error occured
 } at86rf215_error_t;
+*/
+// We want to use errno values
 
 /**
  * Device Family
- */
 typedef enum
 {
   AT86RF215   = 0x34, //!< Dual band transceiver and I/Q radio
   AT86RF215IQ = 0x35, //!< I/Q radio
   AT86RF215M  = 0x36  //!< Sub-1GHz Transceiver and I/Q radio
 } at86rf215_family_t;
+*/
+// We are using basic AT86RF215 and this is mostly for validation
 
 /**
  * Radio front-end
  */
 typedef enum
 {
-  AT86RF215_RF09 = 0, //!< Sub-1 GHz radio
-  AT86RF215_RF24 = 1, //!< 2.4 GHz radio
-} at86rf215_radio_t;
+  RF09 = 0, //!< Sub-1 GHz radio
+  RF24 = 1, //!< 2.4 GHz radio
+} rf215_radio_t;
 
 /**
  * CLKO pad driver strength
@@ -122,27 +130,27 @@ typedef enum
 
 typedef enum
 {
-  AT86RF215_STATE_RF_TRXOFF     = 0x2,
-  AT86RF215_STATE_RF_TXPREP     = 0x3,
-  AT86RF215_STATE_RF_TX         = 0x4,
-  AT86RF215_STATE_RF_RX         = 0x5,
-  AT86RF215_STATE_RF_TRANSITION = 0x6,
-  AT86RF215_STATE_RF_RESET      = 0x7
-} at86rf215_rf_state_t;
+  STATE_RF_TRXOFF     = 0x2,
+  STATE_RF_TXPREP     = 0x3,
+  STATE_RF_TX         = 0x4,
+  STATE_RF_RX         = 0x5,
+  STATE_RF_TRANSITION = 0x6,
+  STATE_RF_RESET      = 0x7
+} rf215_state_t;
 
 /**
  * Radio command affecting the FSM
  */
 typedef enum
 {
-  AT86RF215_CMD_RF_NOP    = 0x0, //!< AT86RF215_CMD_RF_NOP
-  AT86RF215_CMD_RF_SLEEP  = 0x1, //!< AT86RF215_CMD_RF_SLEEP
-  AT86RF215_CMD_RF_TRXOFF = 0x2, //!< AT86RF215_CMD_RF_TRXOFF
-  AT86RF215_CMD_RF_TXPREP = 0x3, //!< AT86RF215_CMD_RF_TXPREP
-  AT86RF215_CMD_RF_TX     = 0x4, //!< AT86RF215_CMD_RF_TX
-  AT86RF215_CMD_RF_RX     = 0x5, //!< AT86RF215_CMD_RF_RX
-  AT86RF215_CMD_RF_RESET  = 0x7  //!< AT86RF215_CMD_RF_RESET
-} at86rf215_rf_cmd_t;
+  CMD_RF_NOP    = 0x0, //!< AT86RF215_CMD_RF_NOP
+  CMD_RF_SLEEP  = 0x1, //!< AT86RF215_CMD_RF_SLEEP
+  CMD_RF_TRXOFF = 0x2, //!< AT86RF215_CMD_RF_TRXOFF
+  CMD_RF_TXPREP = 0x3, //!< AT86RF215_CMD_RF_TXPREP
+  CMD_RF_TX     = 0x4, //!< AT86RF215_CMD_RF_TX
+  CMD_RF_RX     = 0x5, //!< AT86RF215_CMD_RF_RX
+  CMD_RF_RESET  = 0x7  //!< AT86RF215_CMD_RF_RESET
+} rf_cmd_t;
 
 /**
  * Chip mode

@@ -80,5 +80,34 @@ int rf215_blk_read(
     return return_code;
 }
 
+//Wrapper for blk write to send commands
+//Issue a command to a specified RF frontend of the IC
+int rf215_cmd(const struct device *dev, rf_cmd_t cmd, rf215_radio_t radio)
+{
+    switch (cmd) {
+        case CMD_RF_NOP:
+        case CMD_RF_SLEEP:
+        case CMD_RF_TRXOFF:
+        case CMD_RF_TXPREP:
+        case CMD_RF_TX:
+        case CMD_RF_RX:
+        case CMD_RF_RESET:
+            break;
+        default:
+            return -EINVAL;
+    }
+    uint16_t reg = 0;
+    switch (radio) {
+        case RF09:
+            reg = REG_RF09_CMD;
+            break;
+        case RF24:
+            reg = REG_RF24_CMD;
+            break;
+        default:
+            return -EINVAL;
+    }
+    return rf215_blk_write_8(dev, reg, cmd, 1);
+}
 
 
