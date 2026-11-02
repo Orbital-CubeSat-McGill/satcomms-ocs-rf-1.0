@@ -4,6 +4,12 @@
 
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
+//structs definitions
+enum rf215_evt {
+    RF215_EVT_TRXRDY  = BIT(0),
+    RF215_EVT_TX_DONE = BIT(1),
+    RF215_EVT_ERROR   = BIT(2),
+};
 
 // RF09 and RF24 status byte bits
 #define RF_TRXRDY BIT(1)

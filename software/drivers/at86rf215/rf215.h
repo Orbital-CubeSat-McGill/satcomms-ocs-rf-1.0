@@ -21,15 +21,10 @@ struct rf215_config {
     uint8_t id;
 };
 
-enum rf215_evt {
-    RF215_EVT_TRXRDY  = BIT(0),
-    RF215_EVT_TX_DONE = BIT(1),
-    RF215_EVT_ERROR   = BIT(2),
-};
-
 // Set struct for chip irq triggers and lock spi access
 struct rf215_data {
     const struct device *dev;
+    const struct rf215_bb_conf;
     struct gpio_callback irq_cb;
     struct k_work irq_work;
     struct k_mutex bus_lock;   /* if other threads also touch the chip */

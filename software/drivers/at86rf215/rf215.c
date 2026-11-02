@@ -12,15 +12,15 @@ LOG_MODULE_REGISTER(rf215);
 
 //forward declarations of functions passed through to the api
 //switch uint8_t to it's respective enum if applicable
-static int rf215_confirm_conn(const struct device *dev); //confirm at86rf215 is connected and alive
-static int rf215_set_mode(const struct device *dev, uint8_t mode); //set Mode of transceiver (ex:sleep)
-static int rf215_bb_conf(const struct device *dev, struct rf215_bbX_config); //set radio configuration from struct
-static int rf215_set_value(const struct device *dev, struct radio, uint8_t set_variable); //set a varible from set_values enum to value
+static int rf215_conn_check(const struct device *dev); //confirm at86rf215 is connected and alive
+static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff 
+static int rf215_bb_conf(const struct device *dev, const struct rf215_bbX_config); //set radio configuration from struct
+static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
+static int rf215_set_value(const struct device *dev, rf215_radio_t radio, uint8_t set_variable); //set a varible from set_values enum to value
 static int rf215_get_value(const struct device *dev, uint8_t *value, uint8_t get_variable);//get a varible from get_values enum to value
-static int rf215_bb_enable(const struct device *dev, struct radio, uint8_t en);
-static int rf215_tx_frame(const struct device *dev, struct radio, size_t timeout_ms);
-static int rf215_rx_frame(const struct device *dev, struct radio, size_t timeout_ms);
-static int rf215_rx(const struct device *dev, struct radio, size_t timeout_ms);
+static int rf215_tx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
+static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
+static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
 
 //--------------------------------------------------------------
 //Private Functions definition
@@ -162,10 +162,15 @@ static int rf215_reset(const struct device *dev)
     // set all register configurations here
     // set operating mode to baseband for both transceivers
     rf215_blk_write(dev, REG_RF_IQIFC1, RF215_MODE_BBRF, 1);
+    // IRQ mask setup (when writint to this register you enable these types of interrupts)
+    // section 5.3.2.1
+    //
+    //
+    // Set 2.4Ghz transciever to sleep as it not used this flight
     return 0;
 }
 
-
+// General purpose method
 static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215_radio_t radio)
 {
     const struct rf215_config *cfg = (const struct rf215_config *)dev->config;
@@ -208,6 +213,25 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
 
 
 //Public funcitions
+
+//returns part number
+static int rf215_conn_check(const struct device *dev)
+{
+    uint8_t part = 0;
+    int ret = rf215_blk_read(dev, REG_RF_PN, &part, 1);
+    if (ret) {
+        return ret;
+    }
+  switch (part) {
+  case RF215:
+  case RF215IQ:
+  case RF215M:
+    return RF215_OK;
+  default:
+    return -RF215_UNKNOWN_IC;
+  }
+}
+
 
 //-------------------------------------------------------------
 //devicetree handling: MacroBatics
