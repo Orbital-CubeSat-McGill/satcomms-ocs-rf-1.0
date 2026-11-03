@@ -14,13 +14,15 @@ LOG_MODULE_REGISTER(rf215);
 //switch uint8_t to it's respective enum if applicable
 static int rf215_conn_check(const struct device *dev); //confirm at86rf215 is connected and alive
 static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff 
-static int rf215_bb_conf(const struct device *dev, const struct rf215_bbX_config); //set radio configuration from struct
+static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx);  /* validate, lock, apply */
+static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch);    /* checked against active preset */
+static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
-static int rf215_set_value(const struct device *dev, rf215_radio_t radio, uint8_t set_variable); //set a varible from set_values enum to value
-static int rf215_get_value(const struct device *dev, uint8_t *value, uint8_t get_variable);//get a varible from get_values enum to value
-static int rf215_tx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
-static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
-static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms);
+static int rf215_get_value(const struct device *dev, uint8_t *value, rf215_get get_variable);//get a varible from get_values enum to value
+static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // write to tx buffer
+static int rf215_tx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); //Flush tx buffer and transmit data
+static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
+static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // Get data from RX buffer
 
 //--------------------------------------------------------------
 //Private Functions definition
@@ -170,7 +172,10 @@ static int rf215_reset(const struct device *dev)
     return 0;
 }
 
+//------------------------------------------------------------------------------
 // General purpose method
+//------------------------------------------------------------------------------
+
 static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215_radio_t radio)
 {
     const struct rf215_config *cfg = (const struct rf215_config *)dev->config;
@@ -212,7 +217,9 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
 }
 
 
+//------------------------------------------------------------------------------
 //Public funcitions
+//------------------------------------------------------------------------------
 
 //returns part number
 static int rf215_conn_check(const struct device *dev)
@@ -243,8 +250,271 @@ static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_
         return rf215_cmd(dev, CMD_TRXOFF, radio);
 }
 
+//------------------------------------------------------------------------------
+// Start of definition of radio function for transmission and receiving
+//------------------------------------------------------------------------------
 
+static int
+write_tx_buffer(struct at86rf215 *h, at86rf215_radio_t radio, const uint8_t *b,
+                size_t len)
+{
+  int ret = 0;
+  if (radio == AT86RF215_RF09) {
+    /* Declare the size of the PSDU */
+    ret = at86rf215_reg_write_8(h, len & 0xFF, REG_BBC0_TXFLL);
+    if (ret) {
+      return ret;
+    }
+    ret = at86rf215_reg_write_8(h, (len >> 8) & 0xFF, REG_BBC0_TXFLH);
+    if (ret) {
+      return ret;
+    }
 
+    /* Fill the buffer */
+    ret = at86rf215_set_seln(h, 0);
+    if (ret) {
+      return ret;
+    }
+    at86rf215_irq_enable(h, 0);
+    uint8_t mosi[2] = {(REG_BBC0_FBTXS >> 8) | 0x80, REG_BBC0_FBTXS & 0xFF};
+    ret             = at86rf215_spi_write(h, mosi, 2);
+    if (ret) {
+      at86rf215_set_seln(h, 1);
+      at86rf215_irq_enable(h, 1);
+      return ret;
+    }
+    ret = at86rf215_spi_write(h, b, len);
+    if (ret) {
+      at86rf215_set_seln(h, 1);
+      at86rf215_irq_enable(h, 1);
+      return ret;
+    }
+  } else {
+    /* Declare the size of the PSDU */
+    ret = at86rf215_reg_write_8(h, len & 0xFF, REG_BBC1_TXFLL);
+    if (ret) {
+      return ret;
+    }
+    ret = at86rf215_reg_write_8(h, (len >> 8) & 0xFF, REG_BBC1_TXFLH);
+    if (ret) {
+      return ret;
+    }
+
+    /* Fill the buffer */
+    ret = at86rf215_set_seln(h, 0);
+    if (ret) {
+      return ret;
+    }
+    at86rf215_irq_enable(h, 0);
+    uint8_t mosi[2] = {(REG_BBC1_FBTXS >> 8) | 0x80, REG_BBC1_FBTXS & 0xFF};
+    ret             = at86rf215_spi_write(h, mosi, 2);
+    if (ret) {
+      at86rf215_set_seln(h, 1);
+      at86rf215_irq_enable(h, 1);
+      return ret;
+    }
+    ret = at86rf215_spi_write(h, b, len);
+    if (ret) {
+      at86rf215_set_seln(h, 1);
+      at86rf215_irq_enable(h, 1);
+      return ret;
+    }
+  }
+  at86rf215_irq_enable(h, 1);
+  return at86rf215_set_seln(h, 1);
+}
+
+/**
+ * @brief Receives a (possibly) received frame from the frame buffer
+ *
+ * @note This function transfers only the contents of the frame buffer. It does
+ * not check for their validity.
+ *
+ * @param h the device handle
+ * @param radio the RF frontend
+ * @param psdu buffer to store the received data
+ * @param len the number of bytes to read from the frame buffer
+ * @return 0 on success or negative error code
+ */
+int
+at86rf215_rx_frame(struct at86rf215 *h, at86rf215_radio_t radio, uint8_t *psdu,
+                   size_t len)
+{
+  int ret = supports_rf(h, radio);
+  if (ret) {
+    return ret;
+  }
+  if (!psdu) {
+    return -AT86RF215_INVAL_PARAM;
+  }
+
+  ret = at86rf215_set_seln(h, 0);
+  if (ret) {
+    return ret;
+  }
+  at86rf215_irq_enable(h, 0);
+  /* Construct properly the MOSI buffer */
+  const uint16_t reg =
+      radio == AT86RF215_RF09 ? REG_BBC0_FBRXS : REG_BBC1_FBRXS;
+  uint8_t mosi[2] = {(reg >> 8) & 0x3F, reg & 0xFF};
+  ret             = at86rf215_spi_read(h, spi_buffer, mosi, 2, len + 2);
+  at86rf215_irq_enable(h, 1);
+  at86rf215_set_seln(h, 1);
+  memcpy(psdu, spi_buffer + 2, len);
+  return ret;
+}
+
+/**
+ * Transmits a frame using the configured baseband core mode
+ * @note the chip mode should ensure that the corresponding baseband core
+ * is enabled
+ * @param h the device handle
+ * @param radio the RF fronted
+ * @param psdu the data to send
+ * @param len the number of bytes to send
+ * @return 0 on success or negative error code
+ */
+int
+at86rf215_tx_frame(struct at86rf215 *h, at86rf215_radio_t radio,
+                   const uint8_t *psdu, size_t len, size_t timeout_ms)
+{
+  size_t deadline = at86rf215_get_time_ms(h) + timeout_ms;
+  int    ret      = supports_rf(h, radio);
+  if (ret) {
+    return ret;
+  }
+  if (!psdu) {
+    return -AT86RF215_INVAL_PARAM;
+  }
+
+  /*
+   * In order to transmit the frame, the corresponding baseband core should
+   * be enabled
+   */
+  if (h->priv.chpm == AT86RF215_RF_MODE_RF) {
+    return -AT86RF215_INVAL_CHPM;
+  }
+  if (radio == AT86RF215_RF09) {
+    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF09) {
+      return -AT86RF215_INVAL_CHPM;
+    }
+  } else {
+    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF24) {
+      return -AT86RF215_INVAL_CHPM;
+    }
+  }
+
+  /*
+   * Write at least once the TXPREP so we are sure that we can start the
+   * transmission
+   */
+  at86rf215_rf_state_t state = AT86RF215_STATE_RF_TRANSITION;
+  while (state != AT86RF215_STATE_RF_TXPREP) {
+    if (at86rf215_get_time_ms(h) > deadline) {
+      return -AT86RF215_TIMEOUT;
+    }
+    at86rf215_set_cmd(h, AT86RF215_CMD_RF_TXPREP, radio);
+    at86rf215_delay_us(h, 100);
+    at86rf215_get_state(h, &state, radio);
+  }
+
+  ret = write_tx_buffer(h, radio, psdu, len);
+  if (ret) {
+    return ret;
+  }
+
+  struct at86rf215_radio *r = &h->priv.radios[radio];
+  r->tx_complete            = 0;
+
+  /* Data are on the buffer. Issue the TX cmd to send them */
+  ret = at86rf215_set_cmd(h, AT86RF215_CMD_RF_TX, radio);
+  if (ret) {
+    return ret;
+  }
+  /* Wait for the transfer to complete */
+  while (r->tx_complete == 0) {
+    if (at86rf215_get_time_ms(h) > deadline) {
+      return -AT86RF215_TIMEOUT;
+    }
+    at86rf215_delay_us(h, 100);
+  }
+  return AT86RF215_OK;
+}
+
+/**
+ * @brief Sets the transceiver in RX mode
+ *
+ * @param h the device handle
+ * @param radio the RF fronted
+ * @param timeout_ms timeout in milisceconds
+ * @return 0 on success or negative error code
+ */
+int
+at86rf215_rx(struct at86rf215 *h, at86rf215_radio_t radio, size_t timeout_ms)
+{
+  size_t deadline = at86rf215_get_time_ms(h) + timeout_ms;
+  int    ret      = supports_rf(h, radio);
+  if (ret) {
+    return ret;
+  }
+
+  /*
+   * In order to transmit the frame, the corresponding baseband core should
+   * be enabled
+   */
+  if (h->priv.chpm == AT86RF215_RF_MODE_RF) {
+    return -AT86RF215_INVAL_CHPM;
+  }
+  if (radio == AT86RF215_RF09) {
+    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF09) {
+      return -AT86RF215_INVAL_CHPM;
+    }
+  } else {
+    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF24) {
+      return -AT86RF215_INVAL_CHPM;
+    }
+  }
+
+  at86rf215_rf_state_t state;
+  ret = at86rf215_get_state(h, &state, radio);
+  if (ret) {
+    return ret;
+  }
+
+  while (state != AT86RF215_STATE_RF_TRXOFF &&
+         state != AT86RF215_STATE_RF_TXPREP) {
+    at86rf215_delay_us(h, 100);
+    if (at86rf215_get_time_ms(h) > deadline) {
+      return -AT86RF215_TIMEOUT;
+    }
+
+    /*
+     * If the radio was in the TRXOFF state request again the TXPREP state
+     */
+    if (state == AT86RF215_STATE_RF_TRXOFF) {
+      at86rf215_set_cmd(h, AT86RF215_CMD_RF_TXPREP, radio);
+      at86rf215_delay_us(h, 100);
+    }
+    at86rf215_get_state(h, &state, radio);
+  }
+
+  at86rf215_delay_us(h, 100);
+
+  /* Go to RX state*/
+  while (state != AT86RF215_STATE_RF_RX) {
+    if (at86rf215_get_time_ms(h) > deadline) {
+      return -AT86RF215_TIMEOUT;
+    }
+    at86rf215_set_cmd(h, AT86RF215_CMD_RF_RX, radio);
+    at86rf215_delay_us(h, 100);
+    at86rf215_get_state(h, &state, radio);
+  }
+  return AT86RF215_OK;
+}
+
+//------------------------------------------------------------------------------
+// End of definition of radio function for transmission and receiving
+//------------------------------------------------------------------------------
 
 
 //-------------------------------------------------------------
