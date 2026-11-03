@@ -331,80 +331,92 @@ write_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *b,
  * @return 0 on success or negative error code
  */
 int
-at86rf215_tx_frame(const struct device *dev, rf215_radio_t radio,
-                   const uint8_t *psdu, size_t len, size_t timeout_ms) {
-    size_t deadline = k_uptime_get();
-    +timeout_ms;
-    /*int    ret      = supports_rf(h, radio); not implemented
+at86rf215_tx(const struct device *dev, rf215_radio_t radio,
+                   const uint8_t *psdu, size_t len, size_t timeout_ms)
+{
+  size_t deadline = k_uptime_get(); + timeout_ms;
+  struct rf21e5_data *data = dev->data;
+  /*int    ret      = supports_rf(h, radio); not implemented
 
-    if (ret) {
-      return ret;
+  if (ret) {
+    return ret;
+  }
+  */
+  if (!psdu) {
+    return -AT86RF215_INVAL_PARAM;
+  }
+
+  /*
+   * In order to transmit the frame, the corresponding baseband core should
+   * be enabled
+   */
+  if (dev->op_mode == RF215_MODE_RF) {
+    return -RF215_INVAL_CHPM;
+  }
+  if (radio == AT86RF215_RF09) {
+    if (dev->op_mode == RF215_MODE_BBRF09) {
+      return -RF215_INVAL_CHPM;
     }
     if (!psdu) {
       return -AT86RF215_INVAL_PARAM;
     }
-    */
+  }
+  /* Clear stale events BEFORE starting the operation */
+  k_event_clear(&data->events, UINT32_MAX);
 
-    /*
-     * In order to transmit the frame, the corresponding baseband core should
-     * be enabled
-     */
-    if (dev->op_mode == RF215_MODE_RF) {
-        return -RF215_INVAL_CHPM;
-    }
-    if (radio == AT86RF215_RF09) {
-        if (dev->op_mode == RF215_MODE_BBRF09) {
-            return -RF215_INVAL_CHPM;
-        }
-    } else {
-        if (dev->op_mode == RF215_MODE_BBRF24) {
-            return -RF215_INVAL_CHPM;
-        }
-    }
+  rf215_cmd(dev, CMD_TRXPREP, radio);
 
-    //fix this while condition to check actual semaphore
-    while (events != RF || events != RF) {
-        if (k_uptime_get() > deadline) {
-            return -RF215_TIMEOUT;
-        }
-        rf215_cmd(dev, CMD_TRXPREP, radio);
-        k_msdelay(1);
-    }
-    /*
-     * Write at least once the TXPREP so we are sure that we can start the
-     * transmission
-     */
-    at86rf215_rf_state_t state = AT86RF215_STATE_RF_TRANSITION;
-    while (state != AT86RF215_STATE_RF_TXPREP) {
-        if (at86rf215_get_time_ms(h) > deadline) {
-            return -AT86RF215_TIMEOUT;
-        }
-        at86rf215_set_cmd(h, AT86RF215_CMD_RF_TXPREP, radio);
-        at86rf215_delay_us(h, 100);
-        at86rf215_get_state(h, &state, radio);
-    }
+  uint32_t val = RF09_EVT_TRXRDY | RF24_EVT_TRXRDY | RF24_EVT_ERROR  | RF09_EVT_ERROR;
+  uint32_t event = k_event_wait(&data->events, val ,false, K_MSEC(timeout_ms));
 
-    ret = write_tx_buffer(h, radio, psdu, len);
-    if (ret) {
-        return ret;
-    }
+  if (event == 0) {
+      return -RF215_TIMEOUT;
+  } else if (event & RF09_EVT_ERROR) {
+      return -RF215_PLL_UNLOCK;
+  } else if (ev & BBC0_EVT_TXFE) {
+      break;
+  }
 
-    struct at86rf215_radio *r = &h->priv.radios[radio];
-    r->tx_complete = 0;
+  k_event_clear(&data->events, event;);
 
-    /* Data are on the buffer. Issue the TX cmd to send them */
-    ret = at86rf215_set_cmd(h, AT86RF215_CMD_RF_TX, radio);
-    if (ret) {
-        return ret;
+  /*
+   * Write at least once the TXPREP so we are sure that we can start the
+   * transmission
+   */
+  rf215_state_t state;
+  while (state != RF215_STATE_TXPREP) {
+    if (k_uptime_get() > deadline) {
+      return -AT86RF215_TIMEOUT;
     }
-    /* Wait for the transfer to complete */
-    while (r->tx_complete == 0) {
-        if (at86rf215_get_time_ms(h) > deadline) {
-            return -AT86RF215_TIMEOUT;
-        }
-        at86rf215_delay_us(h, 100);
-    }
-    return AT86RF215_OK;
+    at86rf215_get_state(h, &state, radio);
+    k_msleep(10);
+  }
+
+  ret = write_tx_buffer(dev, radio, psdu, len);
+  if (ret) {
+    return ret;
+  }
+
+  /* Data are on the buffer. Issue the TX cmd to send them */
+  ret = rf215_set_cmd(dev, CMD_TX, radio);
+  if (ret) {
+    return ret;
+  }
+
+  val = BBC0_EVT_TXFE | BBC1_EVT_TXFE;
+  event = k_event_wait(&data->events, val ,false, K_MSEC(timeout_ms));
+
+  if (event == 0) {
+      return -RF215_TIMEOUT;
+  } else if (event & RF09_EVT_ERROR) {
+      return -RF215_PLL_UNLOCK;
+  } else if (ev & BBC0_EVT_TXFE) {
+      break;
+  }
+
+  k_event_clear(&data->events, event;);  
+
+  return AT86RF215_OK;
 }
 
 /**

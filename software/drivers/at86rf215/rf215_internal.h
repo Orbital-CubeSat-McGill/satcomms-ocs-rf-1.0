@@ -9,10 +9,10 @@
 //structs definitions
 typedef enum {
     RF09_EVT_WAKEUP  = BIT(0),
-    RF09_EVT_TX_DONE = BIT(1),
+    RF09_EVT_TRXRDY = BIT(1),
     RF09_EVT_ERROR   = BIT(2),
     RF24_EVT_WAKEUP  = BIT(3),
-    RF24_EVT_TX_DONE = BIT(4),
+    RF24_EVT_TRXRDY = BIT(4),
     RF24_EVT_ERROR   = BIT(5),
     BBC0_EVT_RXFS    = BIT(6),
     BBC0_EVT_RXFE    = BIT(7),
@@ -30,6 +30,7 @@ typedef enum {
 #define BB_RXFS BIT(0)
 #define BB_RXFE BIT(1)
 #define BB_TXFE BIT(4)
+
 
 // TODO BBC0 and BBC1 status byte bits
 
