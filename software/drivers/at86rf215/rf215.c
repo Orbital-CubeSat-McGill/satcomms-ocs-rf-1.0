@@ -10,8 +10,9 @@
 LOG_MODULE_REGISTER(rf215);
 
 
+//------------------------------------------------------------------------------
 //forward declarations of functions passed through to the api
-//switch uint8_t to it's respective enum if applicable
+//------------------------------------------------------------------------------
 static int rf215_conn_check(const struct device *dev); //confirm at86rf215 is connected and alive
 static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff 
 static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx);  /* validate, lock, apply */
@@ -24,9 +25,10 @@ static int rf215_tx(const struct device *dev, rf215_radio_t radio, size_t timeou
 static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
 static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // Get data from RX buffer
 
-//--------------------------------------------------------------
-//Private Functions definition
-/* ISR context: no SPI, no blocking */
+//------------------------------------------------------------------------------
+//System Functions definition, like INIT(), RESET() and IRQ handiling
+//------------------------------------------------------------------------------
+
 static void rf215_irq_isr(const struct device *port, struct gpio_callback *cb, uint32_t pins)
 {
     struct rf215_data *data = CONTAINER_OF(cb, struct rf215_data, irq_cb);
@@ -86,7 +88,6 @@ static void rf215_post_events(const uint8_t* irqs, struct rf215_data* data) {
     }
 }
 
-/* Thread context: SPI is fine here */
 static void rf215_irq_work(struct k_work *work)
 {
     struct rf215_data *data = CONTAINER_OF(work, struct rf215_data, irq_work);
