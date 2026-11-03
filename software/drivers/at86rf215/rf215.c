@@ -27,7 +27,7 @@ static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeou
 static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,uint8_t *psdu, size_t len); // Get data from RX buffer
 
 //------------------------------------------------------------------------------
-//System Functions definition, like INIT(), RESET() and IRQ handiling
+//System Functions definition, like INIT(), RESET() and IRQ handling
 //------------------------------------------------------------------------------
 
 static void rf215_irq_isr(const struct device *port, struct gpio_callback *cb, uint32_t pins)
@@ -177,7 +177,7 @@ static int rf215_reset(const struct device *dev) {
     int result;
 
     const struct rf215_config *cfg = (const struct rf215_config *) dev->config;
-    struct rf21e5_data *data = dev->data;
+    struct rf215_data *data = dev->data;
     const struct gpio_dt_spec *rf215_gpio = &cfg->rf215;
 
     result = gpio_pin_set_dt(rf215_gpio, 1);
@@ -239,7 +239,7 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
         default:
             return -EINVAL;
     }
-    ret = rf215_blk_read(dev, reg, &val, 1);
+    int ret = rf215_blk_read(dev, reg, &val, 1);
     if (ret) {
         return ret;
     }
