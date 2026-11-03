@@ -372,7 +372,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   } else if (event & RF09_EVT_ERROR) {
       return -RF215_PLL_UNLOCK;
   } else if (event & BBC0_EVT_TXFE) {
-      break;
+      continue;
   }
 
   k_event_clear(&data->events, event);
@@ -408,7 +408,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   } else if (event & RF09_EVT_ERROR) {
       return -RF215_PLL_UNLOCK;
   } else if (event & BBC0_EVT_TXFE) {
-      break;
+      continue;
   }
 
   k_event_clear(&data->events, event);
