@@ -206,7 +206,6 @@ static int rf215_reset(const struct device *dev)
     // IRQ masks  for 2.4GHz BaseBand core
     rf215_blk_write(dev, REG_BBC1_IRQM, val, 1);      
 
-    val = BIT(0);
     // IRQ masks  for sub 1GHz Tranceiver
     rf215_blk_write(dev, REG_RF09_IRQM, val, 1);      
     // IRQ masks  for 2.4GHz Tranceiver
