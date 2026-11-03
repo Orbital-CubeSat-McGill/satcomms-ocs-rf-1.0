@@ -305,7 +305,7 @@ write_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *b,
         }
 
         /* Fill the buffer */
-        ret = at86rf215_blk_write(dev, REG_BBC0_FBTXS, b, len);
+        ret = rf215_blk_write(dev, REG_BBC0_FBTXS, b, len);
     } else {
         /* Declare the size of the PSDU */
         ret = rf215_blk_write(dev, REG_BBC1_TXFLL, len & 0xFFFF, 2);
@@ -314,7 +314,7 @@ write_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *b,
         }
 
         /* Fill the buffer */
-        ret = at86rf215_blk_write(dev, REG_BBC1_FBTXS, b, len);
+        ret = rf215_blk_write(dev, REG_BBC1_FBTXS, b, len);
     }
     return ret;
 }
@@ -336,12 +336,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
 {
   size_t deadline = k_uptime_get(); + timeout_ms;
   struct rf21e5_data *data = dev->data;
-  /*int    ret      = supports_rf(h, radio); not implemented
 
-  if (ret) {
-    return ret;
-  }
-  */
   if (!psdu) {
     return -RF215_INVAL_PARAM;
   }
@@ -350,11 +345,11 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
    * In order to transmit the frame, the corresponding baseband core should
    * be enabled
    */
-  if (dev->op_mode == RF215_MODE_RF) {
+  if (&data->op_mode == RF215_MODE_RF) {
     return -RF215_INVAL_CHPM;
   }
   if (radio == RF09) {
-    if (dev->op_mode == RF215_MODE_BBRF09) {
+    if (&data->op_mode == RF215_MODE_BBRF09) {
       return -RF215_INVAL_CHPM;
     }
     if (!psdu) {
@@ -364,7 +359,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   /* Clear stale events BEFORE starting the operation */
   k_event_clear(&data->events, UINT32_MAX);
 
-  rf215_cmd(dev, CMD_TRXPREP, radio);
+  rf215_cmd(dev, CMD_TXPREP, radio);
 
   uint32_t val = RF09_EVT_TRXRDY | RF24_EVT_TRXRDY | RF24_EVT_ERROR  | RF09_EVT_ERROR;
   uint32_t event = k_event_wait(&data->events, val ,false, K_MSEC(timeout_ms));
@@ -373,32 +368,31 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
       return -RF215_TIMEOUT;
   } else if (event & RF09_EVT_ERROR) {
       return -RF215_PLL_UNLOCK;
-  } else if (ev & BBC0_EVT_TXFE) {
+  } else if (event & BBC0_EVT_TXFE) {
       break;
   }
 
-  k_event_clear(&data->events, event;);
+  k_event_clear(&data->events, event);
 
   /*
    * Write at least once the TXPREP so we are sure that we can start the
    * transmission
    */
   rf215_state_t state;
-  while (state != RF215_STATE_TXPREP) {
+  while (state != STATE_RF_TXPREP) {
     if (k_uptime_get() > deadline) {
       return -RF215_TIMEOUT;
     }
-    at86rf215_get_state(h, &state, radio);
+    rf215_get_state(dev, &state, radio);
     k_msleep(10);
   }
-
-  ret = write_tx_buffer(dev, radio, psdu, len);
+  int ret = write_tx_buffer(dev, radio, psdu, len);
   if (ret) {
     return ret;
   }
 
   /* Data are on the buffer. Issue the TX cmd to send them */
-  ret = rf215_set_cmd(dev, CMD_TX, radio);
+  ret = rf215_cmd(dev, CMD_TX, radio);
   if (ret) {
     return ret;
   }
@@ -410,11 +404,11 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
       return -RF215_TIMEOUT;
   } else if (event & RF09_EVT_ERROR) {
       return -RF215_PLL_UNLOCK;
-  } else if (ev & BBC0_EVT_TXFE) {
+  } else if (event & BBC0_EVT_TXFE) {
       break;
   }
 
-  k_event_clear(&data->events, event;);  
+  k_event_clear(&data->events, event);
 
   return RF215_OK;
 }
