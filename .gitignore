@@ -41,3 +41,22 @@ fp-info-cache
 
 # Local project settings
 *.kicad_prl
+
+
+#Zephyr Build & Output Files
+build/
+cmake-build-*/
+*.elf
+*.bin
+*.hex
+*.stat
+
+#CLION IDE stuff
+.idea/
+.clang-format.bak
+
+#Python Virtual Environments
+.venv/
+venv/
+__pycache__/
+*.pyc
