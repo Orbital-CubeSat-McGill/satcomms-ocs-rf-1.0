@@ -1,6 +1,8 @@
 #ifndef ZEPHYR_DRIVERS_RF215_INTERNAL_H
 #define ZEPHYR_DRIVERS_RF215_INTERNAL_H
 
+#include <errno.h>
+
 
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
@@ -59,23 +61,21 @@ int rf215_cmd(
 
 /**
  * AT86RF215 driver error codes
+ */
 typedef enum
 {
-  AT86RF215_OK = 0,        //!< No error
-  AT86RF215_INVAL_PARAM,   //!< Invalid parameter
-  AT86RF215_NO_INIT,       //!< The IC has not been initialized
-  AT86RF215_NOT_IMPL,      //!< The requested configuration is not implemented
-  AT86RF215_INVAL_VAL,     //!< Invalid value
-  AT86RF215_UNKNOWN_IC,    //!< The IC is not valid
-  AT86RF215_NOT_SUPPORTED, //!< The requested configuration/mode is not
-                           //!< supported
-  AT86RF215_INVAL_CONF,    //!< The requested configuration is invalid
-  AT86RF215_INVAL_CHPM,    //!< Invalid chip mode for the requested operation
-  AT86RF215_TIMEOUT,       //!< A timeout event occured
-  AT86RF215_PLL_UNLOCK     //!< The PLL lock error occured
-} at86rf215_error_t;
-*/
-// We want to use errno values
+  RF215_OK = 0,        //!< No error
+  RF215_INVAL_PARAM   = -EINVAL,    //!< Invalid parameter
+  RF215_NO_INIT       = -ENODEV,    //!< The IC has not been initialized
+  RF215_NOT_IMPL      = -ENOSYS,    //!< The requested configuration is not implemented
+  RF215_INVAL_VAL     = -ERANGE,    //!< Invalid value
+  RF215_UNKNOWN_IC    = -ENXIO,     //!< The IC is not valid
+  RF215_NOT_SUPPORTED = -ENOTSUP,   //!< The requested configuration/mode is not supported
+  RF215_INVAL_CONF    = -EINVAL,    //!< The requested configuration is invalid
+  RF215_INVAL_CHPM    = -EPERM,     //!< Invalid chip mode for the requested operation
+  RF215_TIMEOUT       = -ETIMEDOUT, //!< A timeout event occurred
+  RF215_PLL_UNLOCK    = -EIO        //!< The PLL lock error occurred
+} rf215_error_t;
 
 /**
  * Device Family
