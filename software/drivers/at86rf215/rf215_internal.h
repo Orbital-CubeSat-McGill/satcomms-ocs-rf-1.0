@@ -94,14 +94,13 @@ typedef enum
 
 /**
  * Device Family
+*/
 typedef enum
 {
-  AT86RF215   = 0x34, //!< Dual band transceiver and I/Q radio
-  AT86RF215IQ = 0x35, //!< I/Q radio
-  AT86RF215M  = 0x36  //!< Sub-1GHz Transceiver and I/Q radio
+  RF215   = 0x34, //!< Dual band transceiver and I/Q radio
+  RF215IQ = 0x35, //!< I/Q radio
+  RF215M  = 0x36  //!< Sub-1GHz Transceiver and I/Q radio
 } at86rf215_family_t;
-*/
-// We are using basic AT86RF215 and this is mostly for validation
 
 /**
  * Radio front-end
