@@ -38,15 +38,48 @@ static void rf215_irq_isr(const struct device *port, struct gpio_callback *cb, u
 
 static void rf215_post_events(const uint8_t* irqs, struct rf215_data* data) {
     uint32_t events = 0;
-
+    // Check for interrupts set in the IRQ bit mask 
+    // if you add more mask make sure to implement them here
+    // Also make sure that the new event you implement is added to the event enum
     if (irqs[0] & RF_TRXRDY) {
-        events |= RF215_EVT_TRXRDY;
+        events |= RF09_EVT_TRXRDY;
     }
     if (irqs[0] & RF_TRXERR) {
-        events |= RF215_EVT_ERROR;
+        events |= RF09_EVT_ERROR;
+    }
+    if (irqs[0] & RF_TRXRDY) {
+        events |= RF09_EVT_TRXRDY;
     }
 
-    // TODO implement the rest of the interrupt signals 
+    if (irqs[1] & RF_TRXRDY) {
+        events |= RF24_EVT_TRXRDY;
+    }
+    if (irqs[1] & RF_TRXERR) {
+        events |= RF24_EVT_ERROR;
+    }
+    if (irqs[1] & RF_TRXRDY) {
+        events |= RF24_EVT_TRXRDY;
+    }
+
+    if (irqs[2] & BB_RXFS) {
+        events |= BBC0_EVT_RXFS;
+    }
+    if (irqs[2] & BB_RXFE) {
+        events |= BBC0_EVT_RXFE;
+    }
+    if (irqs[2] & BB_TXFE) {
+        events |= BBC0_EVT_TXFE;
+    }
+
+    if (irqs[3] & BB_RXFS) {
+        events |= BBC1_EVT_RXFS;
+    }
+    if (irqs[3] & BB_RXFE) {
+        events |= BBC1_EVT_RXFE;
+    }
+    if (irqs[3] & BB_TXFE) {
+        events |= BBC1_EVT_TXFE;
+    }
 
     if (events != 0) {
         k_event_post(&data->events, events);
@@ -151,7 +184,7 @@ static int rf215_reset(const struct device *dev)
         return result;
     }
 
-    k_msleep(1);
+    k_msleep(10);
 
     result = gpio_pin_set_dt(rf215_gpio, 0);
 
@@ -163,12 +196,22 @@ static int rf215_reset(const struct device *dev)
 
     // set all register configurations here
     // set operating mode to baseband for both transceivers
+    // if you add more mask make sure to implement them in post_event function
     rf215_blk_write(dev, REG_RF_IQIFC1, RF215_MODE_BBRF, 1);
     // IRQ mask setup (when writint to this register you enable these types of interrupts)
     // section 5.3.2.1
-    //
-    //
-    // Set 2.4Ghz transciever to sleep as it not used this flight
+    // IRQ masks  for sub 1GHz BaseBand core
+    int val = BIT (0) | BIT(1) | BIT(4);
+    rf215_blk_write(dev, REG_BBC0_IRQM, val, 1);      
+    // IRQ masks  for 2.4GHz BaseBand core
+    rf215_blk_write(dev, REG_BBC1_IRQM, val, 1);      
+
+    val = BIT(0);
+    // IRQ masks  for sub 1GHz Tranceiver
+    rf215_blk_write(dev, REG_RF09_IRQM, val, 1);      
+    // IRQ masks  for 2.4GHz Tranceiver
+    rf215_blk_write(dev, REG_RF09_IRQM, val, 1);      
+
     return 0;
 }
 

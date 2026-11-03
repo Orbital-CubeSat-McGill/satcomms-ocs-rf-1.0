@@ -7,15 +7,29 @@
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
 //structs definitions
-enum rf215_evt {
-    RF215_EVT_TRXRDY  = BIT(0),
-    RF215_EVT_TX_DONE = BIT(1),
-    RF215_EVT_ERROR   = BIT(2),
-};
+typedef enum {
+    RF09_EVT_WAKEUP  = BIT(0),
+    RF09_EVT_TX_DONE = BIT(1),
+    RF09_EVT_ERROR   = BIT(2),
+    RF24_EVT_WAKEUP  = BIT(3),
+    RF24_EVT_TX_DONE = BIT(4),
+    RF24_EVT_ERROR   = BIT(5),
+    BBC0_EVT_RXFS    = BIT(6),
+    BBC0_EVT_RXFE    = BIT(7),
+    BBC0_EVT_TXFE    = BIT(8),
+    BBC1_EVT_RXFS    = BIT(9),
+    BBC1_EVT_RXFE    = BIT(10),
+    BBC1_EVT_TXFE    = BIT(11),
+}rf215_evt;
 
-// RF09 and RF24 status byte bits
+// RF09, RF24, BBC0 and BBC1 status byte bits
+#define RF_WAKEUP BIT(0)
 #define RF_TRXRDY BIT(1)
 #define RF_TRXERR BIT(4)
+
+#define BB_RXFS BIT(0)
+#define BB_RXFE BIT(1)
+#define BB_TXFE BIT(4)
 
 // TODO BBC0 and BBC1 status byte bits
 
