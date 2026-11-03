@@ -338,7 +338,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
                    const uint8_t *psdu, size_t len, size_t timeout_ms)
 {
   size_t deadline = k_uptime_get(); + timeout_ms;
-  struct rf21e5_data *data = dev->data;
+  struct rf215_data *data = dev->data;
 
   if (!psdu) {
     return -RF215_INVAL_PARAM;
