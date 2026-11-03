@@ -1,0 +1,5 @@
+config IEEE802154_AT86RF215
+	bool "AT86RF215 IEEE 802.15.4 Transceiver driver"
+	default y
+	help
+	  Enable support for the Microchip/Atmel AT86RF215 transceiver driver.
