@@ -1,0 +1,5 @@
+mainmenu "Satcomms OCS Initial Test"
+
+rsource "../../drivers/Kconfig"
+
+source "Kconfig.zephyr"
