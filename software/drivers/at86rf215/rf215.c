@@ -222,7 +222,7 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
     const struct rf215_config *cfg = (const struct rf215_config *) dev->config;
 
     if (!state) {
-        return -AT86RF215_INVAL_PARAM;
+        return -RF215_INVAL_PARAM;
     }
     uint8_t val = 0;
     uint16_t reg = 0;
@@ -254,7 +254,7 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
         default:
             return -EINVAL;
     }
-    return AT86RF215_OK;
+    return RF215_OK;
 }
 
 
@@ -343,7 +343,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   }
   */
   if (!psdu) {
-    return -AT86RF215_INVAL_PARAM;
+    return -RF215_INVAL_PARAM;
   }
 
   /*
@@ -353,12 +353,12 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   if (dev->op_mode == RF215_MODE_RF) {
     return -RF215_INVAL_CHPM;
   }
-  if (radio == AT86RF215_RF09) {
+  if (radio == RF09) {
     if (dev->op_mode == RF215_MODE_BBRF09) {
       return -RF215_INVAL_CHPM;
     }
     if (!psdu) {
-      return -AT86RF215_INVAL_PARAM;
+      return -RF215_INVAL_PARAM;
     }
   }
   /* Clear stale events BEFORE starting the operation */
@@ -386,7 +386,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
   rf215_state_t state;
   while (state != RF215_STATE_TXPREP) {
     if (k_uptime_get() > deadline) {
-      return -AT86RF215_TIMEOUT;
+      return -RF215_TIMEOUT;
     }
     at86rf215_get_state(h, &state, radio);
     k_msleep(10);
@@ -416,7 +416,7 @@ at86rf215_tx(const struct device *dev, rf215_radio_t radio,
 
   k_event_clear(&data->events, event;);  
 
-  return AT86RF215_OK;
+  return RF215_OK;
 }
 
 /**
