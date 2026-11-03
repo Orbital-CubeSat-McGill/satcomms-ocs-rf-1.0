@@ -297,114 +297,32 @@ static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_
 //------------------------------------------------------------------------------
 
 static int
-write_tx_buffer(struct at86rf215 *h, at86rf215_radio_t radio, const uint8_t *b,
+write_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *b,
                 size_t len)
 {
   int ret = 0;
-  if (radio == AT86RF215_RF09) {
+  if (radio == RF09) {
     /* Declare the size of the PSDU */
-    ret = at86rf215_reg_write_8(h, len & 0xFF, REG_BBC0_TXFLL);
-    if (ret) {
-      return ret;
-    }
-    ret = at86rf215_reg_write_8(h, (len >> 8) & 0xFF, REG_BBC0_TXFLH);
+    ret = rf215_blk_write(dev, REG_BBC0_TXFLL, len & 0xFFFF, 2);
     if (ret) {
       return ret;
     }
 
     /* Fill the buffer */
-    ret = at86rf215_set_seln(h, 0);
-    if (ret) {
-      return ret;
-    }
-    at86rf215_irq_enable(h, 0);
-    uint8_t mosi[2] = {(REG_BBC0_FBTXS >> 8) | 0x80, REG_BBC0_FBTXS & 0xFF};
-    ret             = at86rf215_spi_write(h, mosi, 2);
-    if (ret) {
-      at86rf215_set_seln(h, 1);
-      at86rf215_irq_enable(h, 1);
-      return ret;
-    }
-    ret = at86rf215_spi_write(h, b, len);
-    if (ret) {
-      at86rf215_set_seln(h, 1);
-      at86rf215_irq_enable(h, 1);
-      return ret;
-    }
+    ret = at86rf215_blk_write(dev, REG_BBC0_FBTXS, b, len);
   } else {
     /* Declare the size of the PSDU */
-    ret = at86rf215_reg_write_8(h, len & 0xFF, REG_BBC1_TXFLL);
-    if (ret) {
-      return ret;
-    }
-    ret = at86rf215_reg_write_8(h, (len >> 8) & 0xFF, REG_BBC1_TXFLH);
+    ret = rf215_blk_write(dev, REG_BBC1_TXFLL, len & 0xFFFF, 2);
     if (ret) {
       return ret;
     }
 
     /* Fill the buffer */
-    ret = at86rf215_set_seln(h, 0);
-    if (ret) {
-      return ret;
-    }
-    at86rf215_irq_enable(h, 0);
-    uint8_t mosi[2] = {(REG_BBC1_FBTXS >> 8) | 0x80, REG_BBC1_FBTXS & 0xFF};
-    ret             = at86rf215_spi_write(h, mosi, 2);
-    if (ret) {
-      at86rf215_set_seln(h, 1);
-      at86rf215_irq_enable(h, 1);
-      return ret;
-    }
-    ret = at86rf215_spi_write(h, b, len);
-    if (ret) {
-      at86rf215_set_seln(h, 1);
-      at86rf215_irq_enable(h, 1);
-      return ret;
-    }
+    ret = at86rf215_blk_write(dev, REG_BBC1_FBTXS, b, len);
   }
-  at86rf215_irq_enable(h, 1);
-  return at86rf215_set_seln(h, 1);
-}
-
-/**
- * @brief Receives a (possibly) received frame from the frame buffer
- *
- * @note This function transfers only the contents of the frame buffer. It does
- * not check for their validity.
- *
- * @param h the device handle
- * @param radio the RF frontend
- * @param psdu buffer to store the received data
- * @param len the number of bytes to read from the frame buffer
- * @return 0 on success or negative error code
- */
-int
-at86rf215_rx_frame(struct at86rf215 *h, at86rf215_radio_t radio, uint8_t *psdu,
-                   size_t len)
-{
-  int ret = supports_rf(h, radio);
-  if (ret) {
-    return ret;
-  }
-  if (!psdu) {
-    return -AT86RF215_INVAL_PARAM;
-  }
-
-  ret = at86rf215_set_seln(h, 0);
-  if (ret) {
-    return ret;
-  }
-  at86rf215_irq_enable(h, 0);
-  /* Construct properly the MOSI buffer */
-  const uint16_t reg =
-      radio == AT86RF215_RF09 ? REG_BBC0_FBRXS : REG_BBC1_FBRXS;
-  uint8_t mosi[2] = {(reg >> 8) & 0x3F, reg & 0xFF};
-  ret             = at86rf215_spi_read(h, spi_buffer, mosi, 2, len + 2);
-  at86rf215_irq_enable(h, 1);
-  at86rf215_set_seln(h, 1);
-  memcpy(psdu, spi_buffer + 2, len);
   return ret;
 }
+
 
 /**
  * Transmits a frame using the configured baseband core mode
@@ -417,35 +335,47 @@ at86rf215_rx_frame(struct at86rf215 *h, at86rf215_radio_t radio, uint8_t *psdu,
  * @return 0 on success or negative error code
  */
 int
-at86rf215_tx_frame(struct at86rf215 *h, at86rf215_radio_t radio,
+at86rf215_tx_frame(const struct device *dev, rf215_radio_t radio,
                    const uint8_t *psdu, size_t len, size_t timeout_ms)
 {
-  size_t deadline = at86rf215_get_time_ms(h) + timeout_ms;
-  int    ret      = supports_rf(h, radio);
+  size_t deadline = k_uptime_get(); + timeout_ms;
+  /*int    ret      = supports_rf(h, radio); not implemented
+
   if (ret) {
     return ret;
   }
   if (!psdu) {
     return -AT86RF215_INVAL_PARAM;
   }
+  */
 
   /*
    * In order to transmit the frame, the corresponding baseband core should
    * be enabled
    */
-  if (h->priv.chpm == AT86RF215_RF_MODE_RF) {
-    return -AT86RF215_INVAL_CHPM;
+  if (dev->op_mode == RF215_MODE_RF) {
+    return -RF215_INVAL_CHPM;
   }
   if (radio == AT86RF215_RF09) {
-    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF09) {
-      return -AT86RF215_INVAL_CHPM;
+    if (dev->op_mode == RF215_MODE_BBRF09) {
+      return -RF215_INVAL_CHPM;
     }
   } else {
-    if (h->priv.chpm == AT86RF215_RF_MODE_BBRF24) {
-      return -AT86RF215_INVAL_CHPM;
+    if (dev->op_mode == RF215_MODE_BBRF24) {
+      return -RF215_INVAL_CHPM;
     }
   }
 
+  //fix this while condition to check actual semaphore
+  while ( events != RF || events != RF)
+  {
+      if (k_uptime_get() > deadline)
+      {
+          return -RF215_TIMEOUT;
+      }
+      rf215_cmd(dev, CMD_TRXPREP, radio);
+      k_msdelay(1);
+  }
   /*
    * Write at least once the TXPREP so we are sure that we can start the
    * transmission
@@ -552,6 +482,46 @@ at86rf215_rx(struct at86rf215 *h, at86rf215_radio_t radio, size_t timeout_ms)
     at86rf215_get_state(h, &state, radio);
   }
   return AT86RF215_OK;
+}
+
+/**
+ * @brief Receives a (possibly) received frame from the frame buffer
+ *
+ * @note This function transfers only the contents of the frame buffer. It does
+ * not check for their validity.
+ *
+ * @param h the device handle
+ * @param radio the RF frontend
+ * @param psdu buffer to store the received data
+ * @param len the number of bytes to read from the frame buffer
+ * @return 0 on success or negative error code
+ */
+int
+at86rf215_rx_frame(struct at86rf215 *h, at86rf215_radio_t radio, uint8_t *psdu,
+                   size_t len)
+{
+  int ret = supports_rf(h, radio);
+  if (ret) {
+    return ret;
+  }
+  if (!psdu) {
+    return -AT86RF215_INVAL_PARAM;
+  }
+
+  ret = at86rf215_set_seln(h, 0);
+  if (ret) {
+    return ret;
+  }
+  at86rf215_irq_enable(h, 0);
+  /* Construct properly the MOSI buffer */
+  const uint16_t reg =
+      radio == AT86RF215_RF09 ? REG_BBC0_FBRXS : REG_BBC1_FBRXS;
+  uint8_t mosi[2] = {(reg >> 8) & 0x3F, reg & 0xFF};
+  ret             = at86rf215_spi_read(h, spi_buffer, mosi, 2, len + 2);
+  at86rf215_irq_enable(h, 1);
+  at86rf215_set_seln(h, 1);
+  memcpy(psdu, spi_buffer + 2, len);
+  return ret;
 }
 
 //------------------------------------------------------------------------------
