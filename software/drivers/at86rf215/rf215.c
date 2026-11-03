@@ -117,6 +117,8 @@ static int rf215_init(const struct device *dev) {
     const struct gpio_dt_spec *rf215_irq = &cfg->rf215_irq;
 
     data->dev = dev;
+    //define opmode here
+    data->op_mode = RF215_MODE_BBRF;
     k_mutex_init(&data->bus_lock);
     k_work_init(&data->irq_work, rf215_irq_work);
     k_event_init(&data->events);
@@ -175,7 +177,7 @@ static int rf215_reset(const struct device *dev) {
     int result;
 
     const struct rf215_config *cfg = (const struct rf215_config *) dev->config;
-
+    struct rf21e5_data *data = dev->data;
     const struct gpio_dt_spec *rf215_gpio = &cfg->rf215;
 
     result = gpio_pin_set_dt(rf215_gpio, 1);
@@ -197,7 +199,8 @@ static int rf215_reset(const struct device *dev) {
     // set all register configurations here
     // set operating mode to baseband for both transceivers
     // if you add more mask make sure to implement them in post_event function
-    rf215_blk_write(dev, REG_RF_IQIFC1, RF215_MODE_BBRF, 1);
+    rf215_blk_write(dev, REG_RF_IQIFC1, data->op_mode, 1);
+
     // IRQ mask setup (when writint to this register you enable these types of interrupts)
     // section 5.3.2.1
     // IRQ masks  for sub 1GHz BaseBand core
