@@ -85,13 +85,13 @@ int rf215_blk_read(
 int rf215_cmd(const struct device *dev, rf_cmd_t cmd, rf215_radio_t radio)
 {
     switch (cmd) {
-        case CMD_RF_NOP:
-        case CMD_RF_SLEEP:
-        case CMD_RF_TRXOFF:
-        case CMD_RF_TXPREP:
-        case CMD_RF_TX:
-        case CMD_RF_RX:
-        case CMD_RF_RESET:
+        case CMD_NOP:
+        case CMD_SLEEP:
+        case CMD_TRXOFF:
+        case CMD_TXPREP:
+        case CMD_TX:
+        case CMD_RX:
+        case CMD_RESET:
             break;
         default:
             return -EINVAL;

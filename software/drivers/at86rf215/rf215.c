@@ -232,6 +232,20 @@ static int rf215_conn_check(const struct device *dev)
   }
 }
 
+// Set Transceiver to sleep
+// wrapper to call private function
+static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en)
+{
+    if (en)
+    {
+        return rf215_cmd(dev, CMD_SLEEP, radio);
+    }else{
+        return rf215_cmd(dev, CMD_TRXOFF, radio);
+}
+
+
+
+
 
 //-------------------------------------------------------------
 //devicetree handling: MacroBatics
