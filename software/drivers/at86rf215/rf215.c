@@ -705,6 +705,7 @@ static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,
 //devicetree handling: MacroBatics
 
 
+
 /**
  * @brief Driver API table exposed through the device.
  *
@@ -747,7 +748,5 @@ static const struct rf215_api rf215_api_funcs = {
 		     POST_KERNEL,						\
 		     CONFIG_GPIO_INIT_PRIORITY,					\
 		     &rf215_api_funcs);						\
-    
 
-
-
+DT_INST_FOREACH_STATUS_OKAY(RF215_DEFINE)
