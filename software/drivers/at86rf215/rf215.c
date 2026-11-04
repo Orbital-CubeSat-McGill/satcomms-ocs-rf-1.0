@@ -372,7 +372,7 @@ static int rf215_get_pll_ls(const struct device *dev, uint8_t *state, rf215_radi
     return ret;
   }
   *state = (rf215_pll_ls_t)((val >> 1) & 0x1);
-  return AT86RF215_OK;
+  return RF215_OK;
 }
 
 
@@ -575,36 +575,35 @@ static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint
     return ret;
   }
   if (channel > 0x1F) {
-    return -AT86RF215_INVAL_PARAM;
+    return -RF215_INVAL_PARAM;
   }
-  /* The radio should be in IEEE channel mode to set a channel */
+  /* The radio should be in IEEE channel mode to set a channel 
+   * since we dont have preset that are not in IEEE mode we can skip this?
   if (h->priv.radios[radio].cm != AT86RF215_CM_IEEE) {
     return -RF215_INVAL_CONF;
-  }
+  }*/
   if (radio == RF09) {
-    ret = rf215_blk_write_8(dev, REG_RF09_CNL, channel & 0xFF, 1);
+    ret = rf215_blk_write(dev, REG_RF09_CNL, channel & 0xFF, 1);
     if (ret) {
       return ret;
     }
-    ret = at86rf215_reg_write_8(
-        h, (h->priv.radios[radio].cm << 6) | ((channel >> 8) & 0x1),
-        REG_RF09_CNM);
+    ret = rf215_blk_write(
+        dev, REG_RF09_CNM ,(0 << 6) | ((channel >> 8) & 0x1), 1);
     if (ret) {
       return ret;
     }
   } else {
-    ret = rf215_blk_write_8(dev, REG_RF24_CNL, channel & 0xFF, 1);
+    ret = rf215_blk_write(dev, REG_RF24_CNL, channel & 0xFF, 1);
     if (ret) {
       return ret;
     }
-    ret = at86rf215_reg_write_8(
-        h, (h->priv.radios[radio].cm << 6) | ((channel >> 8) & 0x1),
-        REG_RF24_CNM);
+    ret = rf215_blk_write(
+        dev, REG_RF24_CNM ,(0 << 6) | ((channel >> 8) & 0x1), 1);
     if (ret) {
       return ret;
     }
   }
-  return AT86RF215_OK;
+  return RF215_OK;
 }
 static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm)
 {
@@ -635,6 +634,17 @@ static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int
 }
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en)
 {
+  uint16_t reg = 0;
+  if (radio == AT86RF215_RF09) {
+    reg = REG_BBC0_PC;
+  } else {
+    reg = REG_BBC1_PC;
+  }
+  ret = rf215_blk_write(dev, reg, val, 1);
+  if (ret) {
+    return ret;
+  }
+  return RF215_OK;
 
 }
 //------------------------------------------------------------------------------
@@ -665,7 +675,7 @@ static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_
 static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio,
                            const uint8_t *psdu, size_t len)
 {
-    if (!dev || !psdu || len == 0 || len > AT86RF215_MAX_PDU ||
+    if (!dev || !psdu || len == 0 || len > RF215_MAX_PDU ||
         (radio != RF09 && radio != RF24)) {
         return RF215_INVAL_PARAM;
     }
@@ -709,7 +719,7 @@ static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio,
 static int rf215_tx(const struct device *dev, rf215_radio_t radio,
                     const uint8_t *psdu, size_t len, size_t timeout_ms)
 {
-    if (!dev || !psdu || len == 0 || len > AT86RF215_MAX_PDU ||
+    if (!dev || !psdu || len == 0 || len > RF215_MAX_PDU ||
         (radio != RF09 && radio != RF24)) {
         return RF215_INVAL_PARAM;
     }
