@@ -23,6 +23,9 @@ struct rf215_config {
     struct spi_dt_spec rf215_spi;
     struct gpio_dt_spec rf215_rst;
     struct gpio_dt_spec rf215_irq;
+    const struct rf215_bb_conf *presets;
+    uint8_t num_presets;
+    uint8_t preset_idx;
     uint8_t id;
 };
 
@@ -62,6 +65,20 @@ typedef enum
   RF215_2FSK = 0, //!< 2-FSK
   RF215_4FSK = 1  //!< 4-FSK
 } rf215_fsk_t;
+
+// Modulation index h: how wide the FSK frequency deviation is relative to the symbol rate
+// This enum is a duplicate of at86rf215_fsk_midx_t in rf215_internal.h (the libre space enum)
+
+typedef enum {
+  RF215_MIDX_0 = 0,  /* h = 0.375 */
+  RF215_MIDX_1 = 1,  /* h = 0.5 */
+  RF215_MIDX_2 = 2,  /* h = 0.75 */
+  RF215_MIDX_3 = 3,  /* h = 1.0 */
+  RF215_MIDX_4 = 4,  /* h = 1.25 */
+  RF215_MIDX_5 = 5,  /* h = 1.5 */
+  RF215_MIDX_6 = 6,  /* h = 1.75 */
+  RF215_MIDX_7 = 7,  /* h = 2.0 */
+} rf215_fsk_midx_t;
 
 /**
  * Scaling factor with regard to the modulation index.

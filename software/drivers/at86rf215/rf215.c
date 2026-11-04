@@ -5,7 +5,7 @@
 #include "rf215.h"
 #include "rf215_internal.h"
 #include "rf215_regs.h"
-
+#include "rf215_presets.h"
 
 LOG_MODULE_REGISTER(rf215);
 
@@ -160,6 +160,9 @@ static int rf215_init(const struct device *dev)
     const struct gpio_dt_spec *rf215_irq = &cfg->rf215_irq;
 
     data->dev = dev;
+    data->num_presets = cfg->num_presets;
+    data->preset = cfg->presets; 
+    data->preset_idx = 0;   // default index [0]
     //define op_mode here
     data->op_mode = RF215_MODE_BBRF;
     k_mutex_init(&data->bus_lock);
@@ -198,6 +201,11 @@ static int rf215_init(const struct device *dev)
 
     // Call reset here to set Register configurations in init
     result = rf215_reset(dev);
+    if (result < 0) {
+        return result;
+    }
+
+    result = rf215_select_preset(dev, RF09, data->preset_idx);
     if (result < 0) {
         return result;
     }
@@ -458,7 +466,108 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
 //------------------------------------------------------------------------------
 // Start of definition of parametrization functions,
 //------------------------------------------------------------------------------
-static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
+
+/**
+ * @brief Apply one MR-FSK baseband preset to a radio.
+ *
+ * Picks presets[idx], packs it into BBC/FSK registers for RF09 (BBC0) or
+ * RF24 (BBC1), writes them over SPI, then remembers the active preset.
+ * Does not enable the baseband (see rf215_bb_enable) and does not set
+ * channel or TX power.
+ */
+static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
+			       uint8_t idx)
+{
+	if (!dev || (radio != RF09 && radio != RF24)) {
+		return RF215_INVAL_PARAM;
+	}
+
+	const struct rf215_config *cfg = dev->config;
+	struct rf215_data *data = dev->data;
+
+	if (!cfg->presets || idx >= data->num_presets) {
+		return RF215_INVAL_PARAM;
+	}
+
+	const struct rf215_bb_conf *bb = &cfg->presets[idx];
+	const struct rf215_mrfsk_conf *fsk = &bb->fsk;
+
+	const uint16_t reg_pc = (radio == RF09) ? REG_BBC0_PC : REG_BBC1_PC;
+	const uint16_t reg_fskc0 =
+		(radio == RF09) ? REG_BBC0_FSKC0 : REG_BBC1_FSKC0;
+	const uint16_t reg_rrxfl =
+		(radio == RF09) ? REG_BBC0_FSKRRXFLL : REG_BBC1_FSKRRXFLL;
+	const uint16_t reg_fskdm =
+		(radio == RF09) ? REG_BBC0_FSKDM : REG_BBC1_FSKDM;
+
+    // byte packing the parameters into the registers
+
+	/* BBCn_PC: CTX FCSFE TXAFCS FCST PT (BBEN left 0) */
+	uint8_t pc = (bb->ctx << 7) | (bb->fcsfe << 6) | (bb->txafcs << 4) |
+		     ((bb->fcst & 1) << 3) | (bb->pt & 0x3);
+
+	/* FSKC0..FSKPHRTX are consecutive */
+	uint8_t fsk_regs[11];
+
+	fsk_regs[0] = ((fsk->bt & 0x3) << 6) | ((fsk->midxs & 0x3) << 4) |
+		      ((fsk->midx & 0x7) << 1) | (fsk->mord & 0x1);
+	fsk_regs[1] = (((fsk->preamble_length >> 8) & 0x3) << 6) |
+		      ((fsk->fi & 0x1) << 5) | (fsk->srate & 0xF);
+	fsk_regs[2] = ((fsk->pdtm & 0x1) << 7) | ((fsk->rxo & 0x3) << 5) |
+		      ((fsk->rxpto & 0x1) << 4) | ((fsk->mse & 0x1) << 3) |
+		      ((fsk->pri & 0x1) << 2) | ((fsk->fecs & 0x1) << 1) |
+		      (fsk->fecie & 0x1);
+	fsk_regs[3] = ((fsk->sfd_threshold & 0xF) << 4) |
+		      (fsk->preamble_threshold & 0xF);
+	fsk_regs[4] = ((fsk->sfdq & 0x1) << 6) | ((fsk->sfd32 & 0x1) << 5) |
+		      ((fsk->rawrbit & 0x1) << 4) | ((fsk->csfd1 & 0x3) << 2) |
+		      (fsk->csfd0 & 0x3);
+	fsk_regs[5] = fsk->preamble_length & 0xFF; /* FSKPLL */
+	fsk_regs[6] = fsk->sfd0 & 0xFF;
+	fsk_regs[7] = (fsk->sfd0 >> 8) & 0xFF;
+	fsk_regs[8] = fsk->sfd1 & 0xFF;
+	fsk_regs[9] = (fsk->sfd1 >> 8) & 0xFF;
+	fsk_regs[10] = ((fsk->sfd & 0x1) << 3) | ((fsk->dw & 0x1) << 2) |
+		       ((fsk->rb2 & 0x1) << 1) | (fsk->rb1 & 0x1);
+
+	uint8_t rrxfl[2] = {
+		fsk->fskrrxf & 0xFF,
+		(fsk->fskrrxf >> 8) & 0x07,
+	};
+
+	/* FSKDM + FSKPE0/1/2 */
+	uint8_t dm_pe[4] = {
+		(fsk->dm & 0x1) | ((fsk->preemphasis & 0x1) << 1),
+		fsk->preemphasis_taps & 0xFF,
+		(fsk->preemphasis_taps >> 8) & 0xFF,
+		(fsk->preemphasis_taps >> 16) & 0xFF,
+	};
+
+	int ret = rf215_blk_write(dev, reg_pc, &pc, 1);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = rf215_blk_write(dev, reg_fskc0, fsk_regs, sizeof(fsk_regs));
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = rf215_blk_write(dev, reg_rrxfl, rrxfl, sizeof(rrxfl));
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = rf215_blk_write(dev, reg_fskdm, dm_pe, sizeof(dm_pe));
+	if (ret < 0) {
+		return ret;
+	}
+
+	data->preset = bb;
+	data->preset_idx = idx;
+	return RF215_OK;
+}
+
 static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
 static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
@@ -739,6 +848,8 @@ static const struct rf215_api rf215_api_funcs = {
 		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), reset_gpios)),	\
 	.rf215_irq = GPIO_DT_SPEC_GET(						\
 		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),	\
+    .presets = rf215_fsk_presets,
+    .num_presets = RF215_NUM_PRESETS,
 	.id = inst								\
     };										\
     /* Create a "device" instance from a Devicetree node identifier and */ 	\

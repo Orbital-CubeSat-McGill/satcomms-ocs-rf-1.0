@@ -9,6 +9,8 @@
  *  These are all options from the AT86RF215 datasheet. 
  *
  * Index 0..3 are the values passed to select_preset().
+
+ * TODO: modify values to define 4 presets (2x 2FSK and 2x 4FSK)
  */
 #define RF215_NUM_PRESETS 4
 
@@ -112,7 +114,7 @@ static const struct rf215_bb_conf rf215_fsk_presets[RF215_NUM_PRESETS] = {
 		.fcst   = RF215_FCS_32,
 		.pt     = RF215_BB_MRFSK,
 		.fsk = {
-			.mord             = RF215_2FSK,
+			.mord             = RF215_4FSK,
 			.midx             = 0,
 			.midxs            = RF215_MIDXS_88,
 			.bt               = RF215_FSK_BT_10,
@@ -156,7 +158,7 @@ static const struct rf215_bb_conf rf215_fsk_presets[RF215_NUM_PRESETS] = {
 		.fcst   = RF215_FCS_32,
 		.pt     = RF215_BB_MRFSK,
 		.fsk = {
-			.mord             = RF215_2FSK,
+			.mord             = RF215_4FSK,
 			.midx             = 0,
 			.midxs            = RF215_MIDXS_88,
 			.bt               = RF215_FSK_BT_10,
