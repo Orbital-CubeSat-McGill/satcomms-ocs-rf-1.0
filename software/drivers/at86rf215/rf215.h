@@ -71,18 +71,6 @@ typedef enum
   RF215_MIDXS_108 = 3, //!< s = 1.0 + 1/4 (10/8)
 } rf215_fsk_midxs_t;
 
-/**
- * Scaling factor with regard to the modulation index.
- * The effectively applied modulation index results in the modulation index
- * configured with MIDX times the scaling factor.
- */
-typedef enum
-{
-  RF215_MIDXS_78  = 0, //!< s = 1.0 - 1/8 (7/8)
-  RF215_MIDXS_88  = 1, //!< s = 1.0 (8/8)
-  RF215_MIDXS_98  = 2, //!< s = 1.0 + 1/8 (9/8)
-  RF215_MIDXS_108 = 3, //!< s = 1.0 + 1/4 (10/8)
-} rf215_fsk_midxs_t;
 
 /**
  * FSK 3-dB bandwidth of the shaping filter
