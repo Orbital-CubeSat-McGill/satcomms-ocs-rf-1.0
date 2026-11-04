@@ -455,6 +455,16 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
     return rf215_blk_write(dev, reg, &value, 1);
 }
 
+//------------------------------------------------------------------------------
+// Start of definition of parametrization functions
+//------------------------------------------------------------------------------
+static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
+static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
+static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
+static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
+//------------------------------------------------------------------------------
+// End of definition of parametrization functions
+//------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
 // Start of definition of radio function for transmission and receiving
