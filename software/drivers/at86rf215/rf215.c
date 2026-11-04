@@ -1,4 +1,4 @@
-#define DT_DRV_COMPAT atmel,at86rf215
+#define DT_DRV_COMPAT atmel_at86rf215
 
 #include <errno.h>
 #include <zephyr/logging/log.h>
@@ -732,10 +732,13 @@ static const struct rf215_api rf215_api_funcs = {
 #define RF215_DEFINE(inst)							\
     /*Create an instance of the config struct, populate with DT values */	\
     static const struct rf215_config rf215_config_##inst = {			\
-	.rf215_spi = SPI_DT_SPEC_GET(RADIO_NODE,				\
-		SPI_WORD_SET(8) | SPI_TRANSFER_MSB),				\
-	.rf215_rst = GPIO_DT_SPEC_GET(RADIO_NODE, reset_gpios),			\
-	.rf215_rst = GPIO_DT_SPEC_GET(RADIO_NODE, irq_gpios),			\
+	.rf215_spi = SPI_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), 			\
+		    (SPI_WORD_SET(8) | SPI_TRANSFER_MSB))),			\
+	.rf215_rst = GPIO_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), reset_gpios)),	\
+	.rf215_irq = GPIO_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),	\
 	.id = inst								\
     };										\
     /* Create a "device" instance from a Devicetree node identifier and */ 	\
