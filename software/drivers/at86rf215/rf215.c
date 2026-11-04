@@ -1,4 +1,4 @@
-#define DT_DRV_COMPACT atmel,at86rf215
+#define DT_DRV_COMPAT atmel_at86rf215
 
 #include <errno.h>
 #include <zephyr/logging/log.h>
@@ -456,7 +456,7 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
 }
 
 //------------------------------------------------------------------------------
-// Start of definition of parametrization functions
+// Start of definition of parametrization functions,
 //------------------------------------------------------------------------------
 static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
 static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
@@ -705,6 +705,7 @@ static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,
 //devicetree handling: MacroBatics
 
 
+
 /**
  * @brief Driver API table exposed through the device.
  *
@@ -712,17 +713,17 @@ static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,
  * functions still need to be added.
  */
 static const struct rf215_api rf215_api_funcs = {
-    static int rf215_conn_check(const struct device *dev); //confirm at86rf215 is connected and alive
-    static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
-    static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
-    static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
-    static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
-    static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
-    static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
-	static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
-    static int rf215_tx(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
-    static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
-    static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio, uint8_t *psdu, size_t len); // get data from RX buffer
+    .conn_check = rf215_conn_check,
+    .set_sleep = rf215_set_sleep,
+    .select_preset = rf215_select_preset,
+    .set_channel = rf215_set_channel,
+    .set_tx_power = rf215_set_tx_power,
+    .bb_enable = rf215_bb_enable,
+    .get_value = rf215_get_value,
+    .tx_buffer = rf215_tx_buffer,
+    .radio_tx = rf215_tx,
+    .radio_rx = rf215_rx,
+    .rx_frame = rf215_rx_frame,
 };
 
 
@@ -731,10 +732,13 @@ static const struct rf215_api rf215_api_funcs = {
 #define RF215_DEFINE(inst)							\
     /*Create an instance of the config struct, populate with DT values */	\
     static const struct rf215_config rf215_config_##inst = {			\
-	.rf215_spi = SPI_DT_SPEC_GET(RADIO_NODE,				\
-		SPI_WORD_SET(8) | SPI_TRANSFER_MSB),				\
-	.rf215_rst = GPIO_DT_SPEC_GET(RADIO_NODE, reset_gpios),			\
-	.rf215_rst = GPIO_DT_SPEC_GET(RADIO_NODE, irq_gpios),			\
+	.rf215_spi = SPI_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), 			\
+		    (SPI_WORD_SET(8) | SPI_TRANSFER_MSB))),			\
+	.rf215_rst = GPIO_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), reset_gpios)),	\
+	.rf215_irq = GPIO_DT_SPEC_GET(						\
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),	\
 	.id = inst								\
     };										\
     /* Create a "device" instance from a Devicetree node identifier and */ 	\
@@ -747,7 +751,5 @@ static const struct rf215_api rf215_api_funcs = {
 		     POST_KERNEL,						\
 		     CONFIG_GPIO_INIT_PRIORITY,					\
 		     &rf215_api_funcs);						\
-    
 
-
-
+DT_INST_FOREACH_STATUS_OKAY(RF215_DEFINE)

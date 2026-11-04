@@ -6,12 +6,17 @@
 #include <zephyr/kernel.h>
 
 struct rf215_api {
-    //api from tutorial might need to remove later depending on if we want to have a public function get the state of each transceiver 
-    int(*get)(const struct device *dev, uint8_t *state);
-    //api we might need
-    int(*validate)(const struct device *dev, uint8_t *rtn);
-    int(*set_param)(const struct device *dev, const struct rf215_param);
-    int(*
+    int (*conn_check)(const struct device *dev); //confirm at86rf215 is connected and alive
+    int (*set_sleep)(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
+    int (*select_preset)(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
+    int (*set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
+    int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, int8_t dbm);
+    int (*bb_enable)(const struct device *dev, rf215_radio_t radio, uint8_t en);
+    int (*get_value)(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
+    int (*tx_buffer)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
+    int (*radio_tx)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
+    int (*radio_rx)(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
+    int (*rx_frame)(const struct device *dev, rf215_radio_t radio, uint8_t *psdu, size_t len); // get data from RX buffer
 };
 
 struct rf215_config {
