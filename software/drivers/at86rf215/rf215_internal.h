@@ -46,6 +46,7 @@ static int rf215_reset(const struct device *dev);
 //General purpose functions
 static int rf215_get_state(const struct device *dev, uint8_t *state, rf215_radio_t radio); //determine state of transceiver
 
+static int rf215_get_pll_ls(const struct device *dev, uint8_t *state, rf215_radio_t radio); //determine if the pll is operational or locked
 
 //Abstraction layer over SPI driver 
 int rf215_blk_write(
@@ -110,6 +111,8 @@ typedef enum
   RF09 = 0, //!< Sub-1 GHz radio
   RF24 = 1, //!< 2.4 GHz radio
 } rf215_radio_t;
+
+//Mostly configuration enums here
 
 /**
  * CLKO pad driver strength
@@ -308,9 +311,9 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_PLL_UNLOCKED = 0, //!< PLL is not locked
-  AT86RF215_PLL_LOCKED   = 1  //!< PLL is locked
-} at86rf215_pll_ls_t;
+  RF215_PLL_UNLOCKED = 0, //!< PLL is not locked
+  RF215_PLL_LOCKED   = 1  //!< PLL is locked
+} rf215_pll_ls_t;
 
 /**
  * Output pads (IRQ, MISO,  FEA09, FEB09, FEA24, FEB24)) driving current
@@ -520,4 +523,11 @@ typedef enum
   AT86RF215_PAVC_2_4V = 2  //!< 2.4V
 } at86rf215_pavc_t;
 
+//useful for logging and evaluting link resiliance
+typedef enum
+{
+    RSSI, 
+    EDV,
+    agc_gain,
+} get_variables;
 #endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H*/

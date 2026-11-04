@@ -343,6 +343,30 @@ static int rf215_state_get(const struct device *dev, rf215_state_t *state, rf215
     return RF215_OK;
 }
 
+/**
+ * Get the PLL lock status for the corresponding RF frontend
+ * @param h the device handle
+ * @param status pointer to store the lock status result
+ * @param radio the RF frontend
+ * @return 0 on success or negative error code
+ */
+static int rf215_get_pll_ls(const struct device *dev, uint8_t *state, rf215_radio_t radio)
+{
+  uint16_t reg = 0;
+  if (radio == RF09) {
+    reg = REG_RF09_PLL;
+  } else {
+    reg = REG_RF24_PLL;
+  }
+  uint8_t val = 0;
+  int ret = rf215_blk_read(dev, reg, &val, 1);
+  if (ret) {
+    return ret;
+  }
+  *state = (rf215_pll_ls_t)((val >> 1) & 0x1);
+  return AT86RF215_OK;
+}
+
 
 //------------------------------------------------------------------------------
 //Public functions
