@@ -847,9 +847,9 @@ static const struct rf215_api rf215_api_funcs = {
 	.rf215_rst = GPIO_DT_SPEC_GET(						\
 		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), reset_gpios)),	\
 	.rf215_irq = GPIO_DT_SPEC_GET(						\
-		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),	\
-    .presets = rf215_fsk_presets,
-    .num_presets = RF215_NUM_PRESETS,
+		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),		\
+	.presets = rf215_fsk_presets,						\
+	.num_presets = RF215_NUM_PRESETS,					\
 	.id = inst								\
     };										\
     /* Create a "device" instance from a Devicetree node identifier and */ 	\

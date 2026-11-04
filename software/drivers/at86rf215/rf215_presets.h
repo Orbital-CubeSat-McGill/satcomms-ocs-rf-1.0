@@ -9,8 +9,6 @@
  *  These are all options from the AT86RF215 datasheet. 
  *
  * Index 0..3 are the values passed to select_preset().
-
- * TODO: modify values to define 4 presets (2x 2FSK and 2x 4FSK)
  */
 #define RF215_NUM_PRESETS 4
 
