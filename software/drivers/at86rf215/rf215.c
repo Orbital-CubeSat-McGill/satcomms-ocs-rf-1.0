@@ -568,9 +568,75 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 	return RF215_OK;
 }
 
-static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
-static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
-static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
+static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch)
+{
+      int ret = radio_ready(h, radio);
+  if (ret) {
+    return ret;
+  }
+  if (channel > 0x1F) {
+    return -AT86RF215_INVAL_PARAM;
+  }
+  /* The radio should be in IEEE channel mode to set a channel */
+  if (h->priv.radios[radio].cm != AT86RF215_CM_IEEE) {
+    return -RF215_INVAL_CONF;
+  }
+  if (radio == RF09) {
+    ret = rf215_blk_write_8(dev, REG_RF09_CNL, channel & 0xFF, 1);
+    if (ret) {
+      return ret;
+    }
+    ret = at86rf215_reg_write_8(
+        h, (h->priv.radios[radio].cm << 6) | ((channel >> 8) & 0x1),
+        REG_RF09_CNM);
+    if (ret) {
+      return ret;
+    }
+  } else {
+    ret = rf215_blk_write_8(dev, REG_RF24_CNL, channel & 0xFF, 1);
+    if (ret) {
+      return ret;
+    }
+    ret = at86rf215_reg_write_8(
+        h, (h->priv.radios[radio].cm << 6) | ((channel >> 8) & 0x1),
+        REG_RF24_CNM);
+    if (ret) {
+      return ret;
+    }
+  }
+  return AT86RF215_OK;
+}
+static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm)
+{
+      int ret = supports_rf(h, radio);
+  if (ret) {
+    return ret;
+  }
+  switch (pacur) {
+  case RF215_PACUR_22mA_RED:
+  case RF215_PACUR_18mA_RED:
+  case RF215_PACUR_11mA_RED:
+  case RF215_PACUR_NO_RED:
+    break;
+  default:
+    return -RF215_INVAL_PARAM;
+  }
+  if (power > 31) {
+    power = 31;
+  }
+
+  uint16_t reg = 0x0;
+  if (radio == RF09) {
+    reg = REG_RF09_PAC;
+  } else {
+    reg = REG_RF24_PAC;
+  }
+  return rf215_blk_write(dev, reg, (pacur << 5) | power, 1);
+}
+static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en)
+{
+
+}
 //------------------------------------------------------------------------------
 // End of definition of parametrization functions
 //------------------------------------------------------------------------------

@@ -119,25 +119,25 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RF_DRVCLKO2 = 0, //!< 2 mA
-  AT86RF215_RF_DRVCLKO4,     //!< 4 mA
-  AT86RF215_RF_DRVCLKO6,     //!< 6 mA
-  AT86RF215_RF_DRVCLKO8      //!< 8 mA
-} at86rf215_rf_clko_drv_t;
+  RF215_RF_DRVCLKO2 = 0, //!< 2 mA
+  RF215_RF_DRVCLKO4,     //!< 4 mA
+  RF215_RF_DRVCLKO6,     //!< 6 mA
+  RF215_RF_DRVCLKO8      //!< 8 mA
+} rf215_rf_clko_drv_t;
 
 /**
  * CLKO output selection
  */
 typedef enum
 {
-  AT86RF215_RF_CLKO_OFF = 0,
-  AT86RF215_RF_CLKO_26_MHZ,
-  AT86RF215_RF_CLKO_32_MHZ,
-  AT86RF215_RF_CLKO_16_MHZ,
-  AT86RF215_RF_CLKO_8_MHZ,
-  AT86RF215_RF_CLKO_4_MHZ,
-  AT86RF215_RF_CLKO_2_MHZ,
-  AT86RF215_RF_CLKO_1_MHZ,
+  RF215_RF_CLKO_OFF = 0,
+  RF215_RF_CLKO_26_MHZ,
+  RF215_RF_CLKO_32_MHZ,
+  RF215_RF_CLKO_16_MHZ,
+  RF215_RF_CLKO_8_MHZ,
+  RF215_RF_CLKO_4_MHZ,
+  RF215_RF_CLKO_2_MHZ,
+  RF215_RF_CLKO_1_MHZ,
 } at86rf215_rf_clko_os_t;
 
 /**
@@ -145,10 +145,10 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RF_FEMODE0 = 0,
-  AT86RF215_RF_FEMODE1,
-  AT86RF215_RF_FEMODE2,
-  AT86RF215_RF_FEMODE3,
+  RF215_RF_FEMODE0 = 0,
+  RF215_RF_FEMODE1,
+  RF215_RF_FEMODE2,
+  RF215_RF_FEMODE3,
 } at86rf215_external_rffe_control_t;
 
 typedef enum
@@ -197,61 +197,61 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RF_PARAMP4U  = 0x0, //!< 4 us
-  AT86RF215_RF_PARAMP8U  = 0x1, //!< 8 us
-  AT86RF215_RF_PARAMP16U = 0x2, //!< 16 us
-  AT86RF215_RF_PARAMP32U = 0x3, //!< 32 us
-} at86rf215_paramp_t;
+  RF215_RF_PARAMP4U  = 0x0, //!< 4 us
+  RF215_RF_PARAMP8U  = 0x1, //!< 8 us
+  RF215_RF_PARAMP16U = 0x2, //!< 16 us
+  RF215_RF_PARAMP32U = 0x3, //!< 32 us
+} rf215_paramp_t;
 
 /**
  * Low pass filter configuration
  */
 typedef enum
 {
-  AT86RF215_RF_FLC80KHZ   = 0x0,
-  AT86RF215_RF_FLC100KHZ  = 0x1,
-  AT86RF215_RF_FLC125KHZ  = 0x2,
-  AT86RF215_RF_FLC160KHZ  = 0x3,
-  AT86RF215_RF_FLC200KHZ  = 0x4,
-  AT86RF215_RF_FLC250KHZ  = 0x5,
-  AT86RF215_RF_FLC315KHZ  = 0x6,
-  AT86RF215_RF_FLC400KHZ  = 0x7,
-  AT86RF215_RF_FLC500KHZ  = 0x8,
-  AT86RF215_RF_FLC624KHZ  = 0x9,
-  AT86RF215_RF_FLC800KHZ  = 0xA,
-  AT86RF215_RF_FLC1000KHZ = 0xB
-} at86rf215_lpfcut_t;
+  RF215_RF_FLC80KHZ   = 0x0,
+  RF215_RF_FLC100KHZ  = 0x1,
+  RF215_RF_FLC125KHZ  = 0x2,
+  RF215_RF_FLC160KHZ  = 0x3,
+  RF215_RF_FLC200KHZ  = 0x4,
+  RF215_RF_FLC250KHZ  = 0x5,
+  RF215_RF_FLC315KHZ  = 0x6,
+  RF215_RF_FLC400KHZ  = 0x7,
+  RF215_RF_FLC500KHZ  = 0x8,
+  RF215_RF_FLC624KHZ  = 0x9,
+  RF215_RF_FLC800KHZ  = 0xA,
+  RF215_RF_FLC1000KHZ = 0xB
+} rf215_lpfcut_t;
 
 typedef enum
 {
-  AT86RF215_RF_BW160KHZ_IF250KHZ   = 0,
-  AT86RF215_RF_BW200KHZ_IF250KHZ   = 0x1,
-  AT86RF215_RF_BW250KHZ_IF250KHZ   = 0x2,
-  AT86RF215_RF_BW320KHZ_IF500KHZ   = 0x3,
-  AT86RF215_RF_BW400KHZ_IF500KHZ   = 0x4,
-  AT86RF215_RF_BW500KHZ_IF500KHZ   = 0x5,
-  AT86RF215_RF_BW630KHZ_IF1000KHZ  = 0x6,
-  AT86RF215_RF_BW800KHZ_IF1000KHZ  = 0x7,
-  AT86RF215_RF_BW1000KHZ_IF1000KHZ = 0x8,
-  AT86RF215_RF_BW1250KHZ_IF2000KHZ = 0x9,
-  AT86RF215_RF_BW1600KHZ_IF2000KHZ = 0xA,
-  AT86RF215_RF_BW2000KHZ_IF2000KHZ = 0xB
-} at86rf215_rx_bw_t;
+  RF215_RF_BW160KHZ_IF250KHZ   = 0,
+  RF215_RF_BW200KHZ_IF250KHZ   = 0x1,
+  RF215_RF_BW250KHZ_IF250KHZ   = 0x2,
+  RF215_RF_BW320KHZ_IF500KHZ   = 0x3,
+  RF215_RF_BW400KHZ_IF500KHZ   = 0x4,
+  RF215_RF_BW500KHZ_IF500KHZ   = 0x5,
+  RF215_RF_BW630KHZ_IF1000KHZ  = 0x6,
+  RF215_RF_BW800KHZ_IF1000KHZ  = 0x7,
+  RF215_RF_BW1000KHZ_IF1000KHZ = 0x8,
+  RF215_RF_BW1250KHZ_IF2000KHZ = 0x9,
+  RF215_RF_BW1600KHZ_IF2000KHZ = 0xA,
+  RF215_RF_BW2000KHZ_IF2000KHZ = 0xB
+} rf215_rx_bw_t;
 
 /**
  * Sampling rate configuration
  */
 typedef enum
 {
-  AT86RF215_SR_4000KHZ = 0x1,
-  AT86RF215_SR_2000KHZ = 0x2,
-  AT86RF215_SR_1333KHZ = 0x3,
-  AT86RF215_SR_1000KHZ = 0x4,
-  AT86RF215_SR_800KHZ  = 0x5,
-  AT86RF215_SR_666KHZ  = 0x6,
-  AT86RF215_SR_500KHZ  = 0x8,
-  AT86RF215_SR_400KHZ  = 0xA,
-} at86rf215_sr_t;
+  RF215_SR_4000KHZ = 0x1,
+  RF215_SR_2000KHZ = 0x2,
+  RF215_SR_1333KHZ = 0x3,
+  RF215_SR_1000KHZ = 0x4,
+  RF215_SR_800KHZ  = 0x5,
+  RF215_SR_666KHZ  = 0x6,
+  RF215_SR_500KHZ  = 0x8,
+  RF215_SR_400KHZ  = 0xA,
+} rf215_sr_t;
 
 /**
  * @brief Relative cut-off frequency, where 1.0 refers to half the sample
@@ -260,51 +260,51 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RCUT_25FS2  = 0x0, //!< 0.25 *fs/2
-  AT86RF215_RCUT_37FS2  = 0x1, //!< 0.375 *fs/2
-  AT86RF215_RCUT_50FS2  = 0x2, //!< 0.50 *fs/2
-  AT86RF215_RCUT_75FS2  = 0x3, //!< 0.75 *fs/2
-  AT86RF215_RCUT_100FS2 = 0x4  //!< 1.00 *fs/2
-} at86rf215_rcut_t;
+  RF215_RCUT_25FS2  = 0x0, //!< 0.25 *fs/2
+  RF215_RCUT_37FS2  = 0x1, //!< 0.375 *fs/2
+  RF215_RCUT_50FS2  = 0x2, //!< 0.50 *fs/2
+  RF215_RCUT_75FS2  = 0x3, //!< 0.75 *fs/2
+  RF215_RCUT_100FS2 = 0x4  //!< 1.00 *fs/2
+} rf215_rcut_t;
 
 /**
  * Power amplifier current settings
  */
 typedef enum
 {
-  AT86RF215_PACUR_22mA_RED = 0x0, //!< current reduction by about 22mA (3dB
-                                  //!< reduction of max. small signal gain)
-  AT86RF215_PACUR_18mA_RED = 0x1, //!< current reduction by about 18mA (2dB
-                                  //!< reduction of max. small signal gain)
-  AT86RF215_PACUR_11mA_RED = 0x2, //!< current reduction by about 11mA (1dB
-                                  //!< reduction of max. small signal gain)
-  AT86RF215_PACUR_NO_RED = 0x3, //!< No power amplifier current reduction (max.
-                                //!< transmit small signal gain)
-} at86rf215_pacur_t;
+  RF215_PACUR_22mA_RED = 0x0, //!< current reduction by about 22mA (3dB
+                              //!< reduction of max. small signal gain)
+  RF215_PACUR_18mA_RED = 0x1, //!< current reduction by about 18mA (2dB
+                              //!< reduction of max. small signal gain)
+  RF215_PACUR_11mA_RED = 0x2, //!< current reduction by about 11mA (1dB
+                              //!< reduction of max. small signal gain)
+  RF215_PACUR_NO_RED = 0x3, //!< No power amplifier current reduction (max.
+                            //!< transmit small signal gain)
+} rf215_pacur_t;
 
 /**
  * Channel mode configuration
  */
 typedef enum
 {
-  AT86RF215_CM_IEEE = 0, //!< IEEE compliant
-  AT86RF215_CM_FINE_RES_04 =
-      1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
-  AT86RF215_CM_FINE_RES_09 =
-      2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
-  AT86RF215_CM_FINE_RES_24 =
-      3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
-} at86rf215_cm_t;
+  RF215_CM_IEEE = 0, //!< IEEE compliant
+  RF215_CM_FINE_RES_04 =
+  1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
+  RF215_CM_FINE_RES_09 =
+  2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
+  RF215_CM_FINE_RES_24 =
+  3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
+} rf215_cm_t;
 
 /**
  * PLL loop bandwidth setting
  */
 typedef enum
 {
-  AT86RF215_PLL_LBW_DEFAULT = 0, //!< Default
-  AT86RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
-  AT86RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
-} at86rf215_pll_lbw_t;
+  RF215_PLL_LBW_DEFAULT = 0, //!< Default
+  RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
+  RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
+} rf215_pll_lbw_t;
 
 /**
  * PLL lock status
@@ -321,35 +321,35 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_RF_DRV2 = 0, //!< 2 mA
-  AT86RF215_RF_DRV4 = 1, //!< 4 mA
-  AT86RF215_RF_DRV6 = 2, //!< 6 mA
-  AT86RF215_RF_DRV8 = 3  //!< 8 mA
-} at86rf215_drv_t;
+  RF215_RF_DRV2 = 0, //!< 2 mA
+  RF215_RF_DRV4 = 1, //!< 4 mA
+  RF215_RF_DRV6 = 2, //!< 6 mA
+  RF215_RF_DRV8 = 3  //!< 8 mA
+} rf215_drv_t;
 
 /**
  * LVDS driving current strength
  */
 typedef enum
 {
-  AT86RF215_LVDS_DRV1 = 0, //!< 1 mA
-  AT86RF215_LVDS_DRV2 = 1, //!< 2 mA
-  AT86RF215_LVDS_DRV3 = 2, //!< 3 mA
-  AT86RF215_LVDS_DRV4 = 3, //!< 4 mA
-} at86rf215_lvds_drv_t;
+  RF215_LVDS_DRV1 = 0, //!< 1 mA
+  RF215_LVDS_DRV2 = 1, //!< 2 mA
+  RF215_LVDS_DRV3 = 2, //!< 3 mA
+  RF215_LVDS_DRV4 = 3, //!< 4 mA
+} rf215_lvds_drv_t;
 
 /**
  * LVDS common mode voltage
  */
 typedef enum
 {
-  AT86RF215_LVDS_CMV150 = 0, //!< 150 mV
-  AT86RF215_LVDS_CMV200 = 1, //!< 200 mV
-  AT86RF215_LVDS_CMV250 = 2, //!< 250 mV
-  AT86RF215_LVDS_CMV300 = 3, //!< 300 mV
-} at86rf215_lvds_cmv_t;
+  RF215_LVDS_CMV150 = 0, //!< 150 mV
+  RF215_LVDS_CMV200 = 1, //!< 200 mV
+  RF215_LVDS_CMV250 = 2, //!< 250 mV
+  RF215_LVDS_CMV300 = 3, //!< 300 mV
+} rf215_lvds_cmv_t;
 
-struct at86rf215_radio_conf
+struct rf215_radio_conf
 {
   at86rf215_cm_t      cm;
   uint32_t            cs;
@@ -362,31 +362,31 @@ struct at86rf215_radio_conf
  */
 typedef enum
 {
-  AT86RF215_BB_PHYOFF  = 0, //!< BB core is OFF
-  AT86RF215_BB_MRFSK   = 1, //!< MR-FSK
-  AT86RF215_BB_MROFDM  = 2, //!< MR-OFDM
-  AT86RF215_BB_MROQPSK = 3  //!< MR-OQPSK
-} at86rf215_phy_t;
+  RF215_BB_PHYOFF  = 0, //!< BB core is OFF
+  RF215_BB_MRFSK   = 1, //!< MR-FSK
+  RF215_BB_MROFDM  = 2, //!< MR-OFDM
+  RF215_BB_MROQPSK = 3  //!< MR-OQPSK
+} rf215_phy_t;
 
 /**
  * FCS type
  */
 typedef enum
 {
-  AT86RF215_FCS_16 = 0, //!< 16-bit
-  AT86RF215_FCS_32 = 1  //!< 32-bit
-} at86rf215_fcs_t;
+  RF215_FCS_16 = 0, //!< 16-bit
+  RF215_FCS_32 = 1  //!< 32-bit
+} rf215_fcs_t;
 
 /**
  * FSK 3-dB bandwidth of the shaping filter
  */
 typedef enum
 {
-  AT86RF215_FSK_BT_05 = 0, //!< BT = 0.5
-  AT86RF215_FSK_BT_10 = 1, //!< BT = 1.0
-  AT86RF215_FSK_BT_15 = 2, //!< BT = 1.5
-  AT86RF215_FSK_BT_20 = 3, //!< BT = 2.0
-} at86rf215_fsk_bt_t;
+  RF215_FSK_BT_05 = 0, //!< BT = 0.5
+  RF215_FSK_BT_10 = 1, //!< BT = 1.0
+  RF215_FSK_BT_15 = 2, //!< BT = 1.5
+  RF215_FSK_BT_20 = 3, //!< BT = 2.0
+} rf215_fsk_bt_t;
 
 /**
  * Scaling factor with regard to the modulation index.
@@ -395,48 +395,48 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_MIDXS_78  = 0, //!< s = 1.0 - 1/8 (7/8)
-  AT86RF215_MIDXS_88  = 1, //!< s = 1.0 (8/8)
-  AT86RF215_MIDXS_98  = 2, //!< s = 1.0 + 1/8 (9/8)
-  AT86RF215_MIDXS_108 = 3, //!< s = 1.0 + 1/4 (10/8)
-} at86rf215_fsk_midxs_t;
+  RF215_MIDXS_78  = 0, //!< s = 1.0 - 1/8 (7/8)
+  RF215_MIDXS_88  = 1, //!< s = 1.0 (8/8)
+  RF215_MIDXS_98  = 2, //!< s = 1.0 + 1/8 (9/8)
+  RF215_MIDXS_108 = 3, //!< s = 1.0 + 1/4 (10/8)
+} rf215_fsk_midxs_t;
 
 /**
  * Modulation index
  */
 typedef enum
 {
-  AT86RF215_MIDX_0 = 0, //!< Modulation index = 0.375
-  AT86RF215_MIDX_1 = 1, //!< Modulation index = 0.5
-  AT86RF215_MIDX_2 = 2, //!< Modulation index = 0.75
-  AT86RF215_MIDX_3 = 3, //!< Modulation index = 1.0
-  AT86RF215_MIDX_4 = 4, //!< Modulation index = 1.25
-  AT86RF215_MIDX_5 = 5, //!< Modulation index = 1.5
-  AT86RF215_MIDX_6 = 6, //!< Modulation index = 1.75
-  AT86RF215_MIDX_7 = 7, //!< Modulation index = 2.0
-} at86rf215_fsk_midx_t;
+  RF215_MIDX_0 = 0, //!< Modulation index = 0.375
+  RF215_MIDX_1 = 1, //!< Modulation index = 0.5
+  RF215_MIDX_2 = 2, //!< Modulation index = 0.75
+  RF215_MIDX_3 = 3, //!< Modulation index = 1.0
+  RF215_MIDX_4 = 4, //!< Modulation index = 1.25
+  RF215_MIDX_5 = 5, //!< Modulation index = 1.5
+  RF215_MIDX_6 = 6, //!< Modulation index = 1.75
+  RF215_MIDX_7 = 7, //!< Modulation index = 2.0
+} rf215_fsk_midx_t;
 
 /**
  * FSK type
  */
 typedef enum
 {
-  AT86RF215_2FSK = 0, //!< 2-FSK
-  AT86RF215_4FSK = 1  //!< 4-FSK
-} at86rf215_fsk_t;
+  RF215_2FSK = 0, //!< 2-FSK
+  RF215_4FSK = 1  //!< 4-FSK
+} rf215_fsk_t;
 
 /**
  * FSK symbol rates
  */
 typedef enum
 {
-  AT86RF215_FSK_SRATE_50  = 0, //!< 50 kHz
-  AT86RF215_FSK_SRATE_100 = 1, //!< 100 kHz
-  AT86RF215_FSK_SRATE_150 = 2, //!< 150 kHz
-  AT86RF215_FSK_SRATE_200 = 3, //!< 200 kHz
-  AT86RF215_FSK_SRATE_300 = 4, //!< 300 kHz
-  AT86RF215_FSK_SRATE_400 = 5  //!< 400 kHz
-} at86rf215_fsk_srate_t;
+  RF215_FSK_SRATE_50  = 0, //!< 50 kHz
+  RF215_FSK_SRATE_100 = 1, //!< 100 kHz
+  RF215_FSK_SRATE_150 = 2, //!< 150 kHz
+  RF215_FSK_SRATE_200 = 3, //!< 200 kHz
+  RF215_FSK_SRATE_300 = 4, //!< 300 kHz
+  RF215_FSK_SRATE_400 = 5  //!< 400 kHz
+} rf215_fsk_srate_t;
 
 /**
  * Receiver override setting.
@@ -446,58 +446,58 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_FSK_RXO_6DB  = 0,    //!< Receiver restarted by >6dB stronger frame
-  AT86RF215_FSK_RXO_12DB = 1,    //!< Receiver restarted by >12dB stronger frame
-  AT86RF215_FSK_RXO_18DB = 2,    //!< Receiver restarted by >18dB stronger frame
-  AT86RF215_FSK_RXO_DISABLED = 3 //!< Receiver override disabled
-} at86rf215_fsk_rxo_t;
+  RF215_FSK_RXO_6DB  = 0,    //!< Receiver restarted by >6dB stronger frame
+  RF215_FSK_RXO_12DB = 1,    //!< Receiver restarted by >12dB stronger frame
+  RF215_FSK_RXO_18DB = 2,    //!< Receiver restarted by >18dB stronger frame
+  RF215_FSK_RXO_DISABLED = 3 //!< Receiver override disabled
+} rf215_fsk_rxo_t;
 
 /**
  * FSK FEC Scheme
  */
 typedef enum
 {
-  AT86RF215_FSK_FEC_NRNSC =
+  RF215_FSK_FEC_NRNSC =
       0, //!< non-recursive and non-systematic convolutional cod
-  AT86RF215_FSK_FEC_RSC = 1 //!< recursive and systematic convolutional code
-} at86rf215_fsk_fecs_t;
+  RF215_FSK_FEC_RSC = 1 //!< recursive and systematic convolutional code
+} rf215_fsk_fecs_t;
 
 /**
  * SFD condifuration
  */
 typedef enum
 {
-  AT86RF215_SFD_UNCODED_IEEE = 0, //!< Uncoded IEEE mode
-  AT86RF215_SFD_UNCODED_RAW  = 1, //!< Uncoded RAW mode
-  AT86RF215_SFD_CODED_IEEE   = 2, //!< Coded IEEE mode
-  AT86RF215_SFD_CODED_RAW    = 3, //!< Coded RAW mode
-} at86rf215_sfd_mode_t;
+  RF215_SFD_UNCODED_IEEE = 0, //!< Uncoded IEEE mode
+  RF215_SFD_UNCODED_RAW  = 1, //!< Uncoded RAW mode
+  RF215_SFD_CODED_IEEE   = 2, //!< Coded IEEE mode
+  RF215_SFD_CODED_RAW    = 3, //!< Coded RAW mode
+} rf215_sfd_mode_t;
 
 /**
  * The AGC target level relative to ADC full scale
  */
 typedef enum
 {
-  AT86RF215_TGT_M21 = 0, //!< Target=-21dB
-  AT86RF215_TGT_M24 = 1, //!< Target=-24dB
-  AT86RF215_TGT_M27 = 2, //!< Target=-27dB
-  AT86RF215_TGT_M30 = 3, //!< Target=-30dB
-  AT86RF215_TGT_M33 = 4, //!< Target=-33dB
-  AT86RF215_TGT_M36 = 5, //!< Target=-36dB
-  AT86RF215_TGT_M39 = 6, //!< Target=-39dB
-  AT86RF215_TGT_M42 = 7, //!< Target=-42dB
-} at86rf215_agc_tgt_t;
+  RF215_TGT_M21 = 0, //!< Target=-21dB
+  RF215_TGT_M24 = 1, //!< Target=-24dB
+  RF215_TGT_M27 = 2, //!< Target=-27dB
+  RF215_TGT_M30 = 3, //!< Target=-30dB
+  RF215_TGT_M33 = 4, //!< Target=-33dB
+  RF215_TGT_M36 = 5, //!< Target=-36dB
+  RF215_TGT_M39 = 6, //!< Target=-39dB
+  RF215_TGT_M42 = 7, //!< Target=-42dB
+} rf215_agc_tgt_t;
 
 /**
  * AGC Average Time in Number of Samples
  */
 typedef enum
 {
-  AT86RF215_AVGS_8  = 0, //!< 8 samples
-  AT86RF215_AVGS_16 = 1, //!< 16 samples
-  AT86RF215_AVGS_32 = 2, //!< 32 samples
-  AT86RF215_AVGS_64 = 3, //!< 64 samples
-} at86rf215_agc_avgs_t;
+  RF215_AVGS_8  = 0, //!< 8 samples
+  RF215_AVGS_16 = 1, //!< 16 samples
+  RF215_AVGS_32 = 2, //!< 32 samples
+  RF215_AVGS_64 = 3, //!< 64 samples
+} rf215_agc_avgs_t;
 
 /**
  * Depending on the external frontend setup (external LNA), a specific AGC gain
@@ -506,22 +506,22 @@ typedef enum
  */
 typedef enum
 {
-  AT86RF215_AGC_MAP_INTERNAL = 0, //!< Internal AGC, no external LNA used
-  AT86RF215_AGC_MAP_9DB =
+  RF215_AGC_MAP_INTERNAL = 0, //!< Internal AGC, no external LNA used
+  RF215_AGC_MAP_9DB =
       1, //!< AGC back-off for external LNA of about 9dB gain
-  AT86RF215_AGC_MAP_12DB =
+  RF215_AGC_MAP_12DB =
       2 //!< AGC back-off for external LNA of about 12dB gain
-} at86rf215_agc_map_t;
+} rf215_agc_map_t;
 
 /**
  * Internal power amplifier voltage
  */
 typedef enum
 {
-  AT86RF215_PAVC_2_0V = 0, //!< 2V
-  AT86RF215_PAVC_2_2V = 1, //!< 2.2V
-  AT86RF215_PAVC_2_4V = 2  //!< 2.4V
-} at86rf215_pavc_t;
+  RF215_PAVC_2_0V = 0, //!< 2V
+  RF215_PAVC_2_2V = 1, //!< 2.2V
+  RF215_PAVC_2_4V = 2  //!< 2.4V
+} rf215_pavc_t;
 
 //useful for logging and evaluting link resiliance
 typedef enum
