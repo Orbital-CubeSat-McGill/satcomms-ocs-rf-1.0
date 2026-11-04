@@ -528,6 +528,6 @@ typedef enum
 {
     RSSI, 
     EDV,
-    agc_gain,
+    AGC,
 } get_variables;
 #endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H*/

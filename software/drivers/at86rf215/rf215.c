@@ -19,7 +19,7 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, ui
 static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
 static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
-static int rf215_get_value(const struct device *dev, uint8_t *value, rf215_get get_variable); //get a variable from get_values enum to value
+static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
 static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
 static int rf215_tx(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
 static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
@@ -411,7 +411,7 @@ static int rf215_conn_check(const struct device *dev)
  */
 static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en)
 // Set Transceiver to sleep
-// wrapper to call private function
+// wrapper to call privbate function
 {
     if (en) {
         return rf215_cmd(dev, CMD_SLEEP, radio);
@@ -419,6 +419,42 @@ static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_
         return rf215_cmd(dev, CMD_TRXOFF, radio);
     }
 }
+
+static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value)
+{
+    int reg;
+    if (radio == RF09){
+	switch (var){
+	case RSSI:
+	    reg = REG_RF09_RSSI;
+		break;
+	case EDV:
+		reg = REG_RF09_EDV;
+		break;
+	case AGC:
+		reg = REG_RF09_AGCS;
+		break;
+	default:
+		return -RF215_INVAL_VAL;
+	}
+    }else{
+	switch (var){
+	case RSSI:
+	    reg = REG_RF24_RSSI;
+		break;
+	case EDV:
+		reg = REG_RF24_EDV;
+		break;
+	case AGC:
+		reg = REG_RF24_AGCS;
+		break;
+	default:
+		return -RF215_INVAL_VAL;
+	}
+    }
+    return rf215_blk_write(dev, reg, &value, 1);
+}
+
 
 //------------------------------------------------------------------------------
 // Start of definition of radio function for transmission and receiving
