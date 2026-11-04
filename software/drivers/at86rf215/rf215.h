@@ -18,7 +18,6 @@ struct rf215_config {
     struct spi_dt_spec rf215_spi;
     struct gpio_dt_spec rf215_rst;
     struct gpio_dt_spec rf215_irq;
-    const struct rf215_bb_conf *presets;   /* array in flash, built from DT */
     uint8_t id;
 };
 
