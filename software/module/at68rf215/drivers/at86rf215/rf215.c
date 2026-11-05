@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 #include "rf215.h"
 #include "rf215_internal.h"
 #include "rf215_regs.h"
@@ -12,6 +13,11 @@ LOG_MODULE_REGISTER(rf215);
 // Far longer than the 500 us the datasheet gives for tPOWERON
 #define RF215_RESET_TIMEOUT_MS 10
 
+// CS and CCF0 are in steps of 25 kHz, and RF24 frequencies have a 1.5 GHz offset (section 6.3.2)
+#define RF215_FREQ_STEP_HZ   25000U
+#define RF215_RF24_OFFSET_HZ 1500000000U
+#define RF215_PLL_LBW_MASK   GENMASK(5, 4)
+
 static int rf215_reset(const struct device *dev);
 
 //------------------------------------------------------------------------------
@@ -19,6 +25,7 @@ static int rf215_reset(const struct device *dev);
 //------------------------------------------------------------------------------
 static int rf215_conn_check(const struct device *dev, uint8_t *part); //confirm at86rf215 is connected and alive, part gets the raw part number
 static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
+static int rf215_radio_conf(const struct device *dev, rf215_radio_t radio, const struct rf215_radio_conf *conf); //set channel spacing, base frequency and PLL bandwidth
 static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
 static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
 static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, uint8_t txpwr); /* raw TXPWR register step, 0..31 */
@@ -301,7 +308,8 @@ static int rf215_wait_wakeup(const struct device *dev)
  * @brief Hardware-reset the chip and apply the baseline configuration.
  *
  * Pulses the reset pin (assert, 10 ms, release), waits for WAKEUP, then writes
- * the chip mode (data->op_mode) to IQIFC1 and unmasks the interrupts the driver
+ * the chip mode (data->op_mode) to IQIFC1, sets the common registers (RF_CFG,
+ * RF_CLKO, RF_XOC and both PADFE) and unmasks the interrupts the driver
  * handles (RXFS, RXFE and TXFE on both baseband cores, WAKEUP, TRXRDY and
  * TRXERR on both radios). All previous register state is lost.
  *
@@ -338,10 +346,44 @@ static int rf215_reset(const struct device *dev)
     // set all register configurations here
     // set operating mode to baseband for both transceivers
     // if you add more masks make sure to implement them in post_event function
-    uint8_t mode = data->op_mode;
+    // CHPM is bits 6:4, keep SKEWDRV (bits 1:0) at its reset value (section 4.5.8.2)
+    uint8_t mode;
+    result = rf215_blk_read(dev, REG_RF_IQIFC1, &mode, 1);
+    if (result != 0) {
+        return result;
+    }
+    mode = (mode & 0x3) | (data->op_mode << 4);
     result = rf215_blk_write(dev, REG_RF_IQIFC1, &mode, 1);
     if (result != 0) {
         return result;
+    }
+
+    // Common registers, written even when they match the reset value so the
+    // driver states what it relies on.
+    static const struct {
+        uint16_t reg;
+        uint8_t val;
+    } common[] = {
+        // IRQ reasons not masked out of IRQS, IRQ active high (the devicetree
+        // assumes this), 4 mA pads (section 4.3.1.1)
+        { REG_RF_CFG, 0x09 },
+        // 26 MHz on CLKO at 4 mA. Nothing uses it, keep it on for clock debugging
+        // for now. Writing 0x08 turns it off (section 4.4.1.1)
+        { REG_RF_CLKO, 0x09 },
+        // TRIM and FS only act on a crystal, and the hat has a TCXO. Any TRIM just
+        // loads the TCXO pin, so keep it at 0 (section 6.4.4.1)
+        { REG_RF_XOC, 0x10 },
+        // FEAnn and FEBnn are not connected on the hat, so no frontend control
+        // (section 6.5.4.2). Transceiver SLEEP resets these two
+        { REG_RF09_PADFE, 0x00 },
+        { REG_RF24_PADFE, 0x00 },
+    };
+
+    for (size_t i = 0; i < ARRAY_SIZE(common); i++) {
+        result = rf215_blk_write(dev, common[i].reg, &common[i].val, 1);
+        if (result != 0) {
+            return result;
+        }
     }
 
     // IRQ mask setup (when writing to this register you enable these types of interrupts)
@@ -554,6 +596,91 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
  * Does not enable the baseband (see rf215_bb_enable) and does not set
  * channel or TX power.
  */
+/**
+ * @brief Check a frequency against the ranges the radio supports.
+ *
+ * The chip does not protect itself against other values (section 6.3.2).
+ */
+static bool rf215_freq_valid(rf215_radio_t radio, uint32_t freq)
+{
+    if (radio == RF24) {
+        return freq >= 2400000000U && freq <= 2483500000U;
+    }
+    return (freq >= 389500000U && freq <= 510000000U) ||
+           (freq >= 779000000U && freq <= 1020000000U);
+}
+
+/**
+ * @brief Set the channel spacing, base frequency and PLL bandwidth of a radio.
+ *
+ * The radio has to be in TRXOFF. Nothing is written unless every argument is
+ * valid. Also selects channel 0, so the radio ends up on conf->base_freq: use
+ * set_channel afterwards to move. Doesn't start the PLL or transmit.
+ *
+ * @param dev   the device handle
+ * @param radio the RF frontend (RF09 or RF24)
+ * @param conf  the configuration to apply
+ * @return RF215_OK on success, RF215_INVAL_PARAM if an argument is invalid,
+ *         RF215_NOT_IMPL for a fine resolution channel mode, RF215_INVAL_CONF if
+ *         the radio is not in TRXOFF, or a negative error code from the SPI layer
+ */
+static int rf215_radio_conf(const struct device *dev, rf215_radio_t radio,
+                            const struct rf215_radio_conf *conf)
+{
+    if (conf == NULL || (radio != RF09 && radio != RF24)) {
+        return RF215_INVAL_PARAM;
+    }
+    if (conf->cm != RF215_CM_IEEE) {
+        return RF215_NOT_IMPL;
+    }
+    if (conf->cs % RF215_FREQ_STEP_HZ != 0 || conf->cs / RF215_FREQ_STEP_HZ > 0xFF) {
+        return RF215_INVAL_PARAM;
+    }
+    if (conf->base_freq % RF215_FREQ_STEP_HZ != 0 ||
+        !rf215_freq_valid(radio, conf->base_freq)) {
+        return RF215_INVAL_PARAM;
+    }
+    if (radio == RF09 && conf->lbw != RF215_PLL_LBW_DEFAULT &&
+        conf->lbw != RF215_PLL_LBW_SMALLER && conf->lbw != RF215_PLL_LBW_LARGER) {
+        return RF215_INVAL_PARAM;
+    }
+
+    rf215_state_t state;
+    int ret = rf215_state_get(dev, &state, radio);
+    if (ret) {
+        return ret;
+    }
+    if (state != STATE_RF_TRXOFF) {
+        return RF215_INVAL_CONF;
+    }
+
+    // LBW is RF09 only. Keep the other PLL bits: bit 3 resets to 1 (section 6.3.3.6)
+    if (radio == RF09) {
+        uint8_t pll;
+        ret = rf215_blk_read(dev, REG_RF09_PLL, &pll, 1);
+        if (ret) {
+            return ret;
+        }
+        pll = (pll & ~RF215_PLL_LBW_MASK) | FIELD_PREP(RF215_PLL_LBW_MASK, conf->lbw);
+        ret = rf215_blk_write(dev, REG_RF09_PLL, &pll, 1);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    uint32_t base = conf->base_freq;
+    if (radio == RF24) {
+        base -= RF215_RF24_OFFSET_HZ;
+    }
+    base /= RF215_FREQ_STEP_HZ;
+
+    // CS, CCF0L, CCF0H, CNL, CNM are consecutive. CNM applies the others, so it
+    // has to be last (section 6.3.2). All zero in CNM is IEEE mode, channel high bit 0
+    const uint8_t regs[] = { conf->cs / RF215_FREQ_STEP_HZ, base & 0xFF, base >> 8, 0, 0 };
+
+    return rf215_blk_write(dev, (radio == RF09) ? REG_RF09_CS : REG_RF24_CS, regs, sizeof(regs));
+}
+
 static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 			       uint8_t idx)
 {
@@ -962,6 +1089,7 @@ static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,
 static const struct rf215_api rf215_api_funcs = {
     .conn_check = rf215_conn_check,
     .set_sleep = rf215_set_sleep,
+    .radio_conf = rf215_radio_conf,
     .select_preset = rf215_select_preset,
     .set_channel = rf215_set_channel,
     .set_tx_power = rf215_set_tx_power,

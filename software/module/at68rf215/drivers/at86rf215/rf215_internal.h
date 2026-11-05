@@ -243,30 +243,6 @@ typedef enum
 } rf215_pacur_t;
 
 /**
- * Channel mode configuration
- */
-typedef enum
-{
-  RF215_CM_IEEE = 0, //!< IEEE compliant
-  RF215_CM_FINE_RES_04 =
-  1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
-  RF215_CM_FINE_RES_09 =
-  2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
-  RF215_CM_FINE_RES_24 =
-  3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
-} rf215_cm_t;
-
-/**
- * PLL loop bandwidth setting
- */
-typedef enum
-{
-  RF215_PLL_LBW_DEFAULT = 0, //!< Default
-  RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
-  RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
-} rf215_pll_lbw_t;
-
-/**
  * PLL lock status
  */
 typedef enum
@@ -308,14 +284,6 @@ typedef enum
   RF215_LVDS_CMV250 = 2, //!< 250 mV
   RF215_LVDS_CMV300 = 3, //!< 300 mV
 } rf215_lvds_cmv_t;
-
-struct rf215_radio_conf
-{
-  rf215_cm_t          cm;
-  uint32_t            cs;
-  uint32_t            base_freq;
-  rf215_pll_lbw_t     lbw;
-};
 
 /**
  * The AGC target level relative to ADC full scale

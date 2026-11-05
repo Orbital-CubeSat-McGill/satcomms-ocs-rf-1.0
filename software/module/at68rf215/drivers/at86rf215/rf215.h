@@ -22,9 +22,42 @@ typedef enum
     AGC,
 } get_variable;
 
+/**
+ * Channel mode configuration
+ */
+typedef enum
+{
+  RF215_CM_IEEE = 0, //!< IEEE compliant
+  RF215_CM_FINE_RES_04 =
+  1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
+  RF215_CM_FINE_RES_09 =
+  2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
+  RF215_CM_FINE_RES_24 =
+  3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
+} rf215_cm_t;
+
+/**
+ * PLL loop bandwidth setting
+ */
+typedef enum
+{
+  RF215_PLL_LBW_DEFAULT = 0, //!< Default
+  RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
+  RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
+} rf215_pll_lbw_t;
+
+struct rf215_radio_conf
+{
+  rf215_cm_t          cm;        //!< Channel scheme, only RF215_CM_IEEE is implemented
+  uint32_t            cs;        //!< Channel spacing in Hz, a multiple of 25 kHz up to 6.375 MHz
+  uint32_t            base_freq; //!< Frequency of channel 0 in Hz, a multiple of 25 kHz
+  rf215_pll_lbw_t     lbw;       //!< PLL loop bandwidth, RF09 only (ignored for RF24)
+};
+
 struct rf215_api {
     int (*conn_check)(const struct device *dev, uint8_t *part); //confirm at86rf215 is connected and alive, part gets the raw part number
     int (*set_sleep)(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
+    int (*radio_conf)(const struct device *dev, rf215_radio_t radio, const struct rf215_radio_conf *conf); //set channel spacing, base frequency and PLL bandwidth, needs TRXOFF, resets to channel 0
     int (*select_preset)(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
     int (*set_channel)(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
     int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, uint8_t txpwr); /* raw TXPWR register step, 0..31 */
