@@ -14,7 +14,6 @@ from PyQt5 import QtCore
 from gnuradio import analog
 import math
 from gnuradio import blocks
-from gnuradio import blocks, gr
 from gnuradio import digital
 from gnuradio import filter
 from gnuradio.filter import firdes
@@ -27,7 +26,7 @@ from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import soapy
-import gnuradio.satnogs as satnogs
+import fsk_demod_epy_block_0 as epy_block_0  # embedded python block
 import sip
 import threading
 
@@ -69,13 +68,13 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.variable_ieee802_15_4_variant_decoder_0 = variable_ieee802_15_4_variant_decoder_0 = satnogs.ieee802_15_4_variant_decoder.make([85, 85, 85, 85, 85], 10, [144, 78], 3, 240)
         self.sq_thresh = sq_thresh = -75
-        self.samp_rate = samp_rate = 2e6
+        self.samp_rate = samp_rate = 8e6
         self.rf_gain = rf_gain = 16
+        self.offset_hz = offset_hz = 0
         self.fsk_deviation = fsk_deviation = 25e3
         self.freq = freq = 915e6
-        self.decim = decim = 4
+        self.decim = decim = 16
 
         ##################################################
         # Blocks
@@ -84,15 +83,18 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         self._sq_thresh_range = qtgui.Range(-100, 0, 1, -75, 100)
         self._sq_thresh_win = qtgui.RangeWidget(self._sq_thresh_range, self.set_sq_thresh, "sq", "counter", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._sq_thresh_win)
+        self._rf_gain_range = qtgui.Range(0, 40, 8, 16, 200)
+        self._rf_gain_win = qtgui.RangeWidget(self._rf_gain_range, self.set_rf_gain, "LNA Gain (dB)", "slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._rf_gain_win)
+        self._offset_hz_range = qtgui.Range(-50e3, 50e3, 500, 0, 200)
+        self._offset_hz_win = qtgui.RangeWidget(self._offset_hz_range, self.set_offset_hz, "Offset (Hz)", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._offset_hz_win)
         self._fsk_deviation_range = qtgui.Range(0, 50e3, 5e3, 25e3, 200)
         self._fsk_deviation_win = qtgui.RangeWidget(self._fsk_deviation_range, self.set_fsk_deviation, "'fsk_deviation'", "counter", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._fsk_deviation_win)
         self._freq_range = qtgui.Range(900e6, 930e6, 1e6, 915e6, 200)
         self._freq_win = qtgui.RangeWidget(self._freq_range, self.set_freq, "'freq'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._freq_win)
-        self._decim_range = qtgui.Range(0, 10, 1, 4, 200)
-        self._decim_win = qtgui.RangeWidget(self._decim_range, self.set_decim, "dec", "slider", float, QtCore.Qt.Horizontal)
-        self.top_layout.addWidget(self._decim_win)
         self.soapy_hackrf_source_0 = None
         dev = 'driver=hackrf'
         stream_args = ''
@@ -103,17 +105,13 @@ class fsk_demod(gr.top_block, Qt.QWidget):
                                   stream_args, tune_args, settings)
         self.soapy_hackrf_source_0.set_sample_rate(0, samp_rate)
         self.soapy_hackrf_source_0.set_bandwidth(0, 0)
-        self.soapy_hackrf_source_0.set_frequency(0, (freq - 250e3))
+        self.soapy_hackrf_source_0.set_frequency(0, (freq + 500e3))
         self.soapy_hackrf_source_0.set_gain(0, 'AMP', False)
-        self.soapy_hackrf_source_0.set_gain(0, 'LNA', min(max(16, 0.0), 40.0))
+        self.soapy_hackrf_source_0.set_gain(0, 'LNA', min(max(rf_gain, 0.0), 40.0))
         self.soapy_hackrf_source_0.set_gain(0, 'VGA', min(max(24, 0.0), 62.0))
-        self.satnogs_frame_decoder_0 = satnogs.frame_decoder(variable_ieee802_15_4_variant_decoder_0, 1 * 1)
-        self._rf_gain_range = qtgui.Range(0, 40, 8, 16, 200)
-        self._rf_gain_win = qtgui.RangeWidget(self._rf_gain_range, self.set_rf_gain, "LNA Gain (dB)", "slider", float, QtCore.Qt.Horizontal)
-        self.top_layout.addWidget(self._rf_gain_win)
         self.qtgui_time_sink_x_0_0 = qtgui.time_sink_f(
             1024, #size
-            samp_rate, #samp_rate
+            samp_rate / decim / 10, #samp_rate
             'Demod', #name
             2, #number of inputs
             None # parent
@@ -163,7 +161,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
             1024, #size
             window.WIN_BLACKMAN_hARRIS, #wintype
             0, #fc
-            samp_rate, #bw
+            (samp_rate / decim), #bw
             'XIR Filter', #name
             1,
             None # parent
@@ -243,11 +241,12 @@ class fsk_demod(gr.top_block, Qt.QWidget):
 
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(4, firdes.low_pass(1.0, samp_rate, 50e3, 20e3), 250e3, samp_rate)
+        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decim, firdes.low_pass(1.0, samp_rate, 50e3, 40e3), (-500e3 + offset_hz), samp_rate)
+        self.epy_block_0 = epy_block_0.blk(expect='tx-burst')
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_ff(
-            digital.TED_EARLY_LATE,
+            digital.TED_GARDNER,
             10,
-            0.01,
+            0.15,
             1.0,
             1.0,
             0.1,
@@ -257,8 +256,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
             128,
             [])
         self.digital_binary_slicer_fb_0 = digital.binary_slicer_fb()
-        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff((-1))
-        self.blocks_message_debug_0 = blocks.message_debug(True, gr.log_levels.info)
+        self.blocks_moving_average_xx_0 = blocks.moving_average_ff(10, 0.1, 4000, 1)
         self.blocks_char_to_float_0 = blocks.char_to_float(1, 1)
         self.analog_simple_squelch_cc_0 = analog.simple_squelch_cc(sq_thresh, 0.01)
         self.analog_quadrature_demod_cf_0 = analog.quadrature_demod_cf(((samp_rate / decim) / (2 * math.pi * fsk_deviation)))
@@ -267,14 +265,13 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         ##################################################
         # Connections
         ##################################################
-        self.msg_connect((self.satnogs_frame_decoder_0, 'out'), (self.blocks_message_debug_0, 'print_pdu'))
-        self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.analog_quadrature_demod_cf_0, 0), (self.blocks_moving_average_xx_0, 0))
         self.connect((self.analog_simple_squelch_cc_0, 0), (self.analog_quadrature_demod_cf_0, 0))
         self.connect((self.blocks_char_to_float_0, 0), (self.qtgui_time_sink_x_0_0, 1))
-        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.digital_symbol_sync_xx_0, 0))
+        self.connect((self.blocks_moving_average_xx_0, 0), (self.digital_symbol_sync_xx_0, 0))
         self.connect((self.digital_binary_slicer_fb_0, 0), (self.blocks_char_to_float_0, 0))
-        self.connect((self.digital_binary_slicer_fb_0, 0), (self.satnogs_frame_decoder_0, 0))
         self.connect((self.digital_symbol_sync_xx_0, 0), (self.digital_binary_slicer_fb_0, 0))
+        self.connect((self.digital_symbol_sync_xx_0, 0), (self.epy_block_0, 0))
         self.connect((self.digital_symbol_sync_xx_0, 0), (self.qtgui_time_sink_x_0_0, 0))
         self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.analog_simple_squelch_cc_0, 0))
         self.connect((self.freq_xlating_fir_filter_xxx_0, 0), (self.qtgui_freq_sink_x_0_0, 0))
@@ -290,12 +287,6 @@ class fsk_demod(gr.top_block, Qt.QWidget):
 
         event.accept()
 
-    def get_variable_ieee802_15_4_variant_decoder_0(self):
-        return self.variable_ieee802_15_4_variant_decoder_0
-
-    def set_variable_ieee802_15_4_variant_decoder_0(self, variable_ieee802_15_4_variant_decoder_0):
-        self.variable_ieee802_15_4_variant_decoder_0 = variable_ieee802_15_4_variant_decoder_0
-
     def get_sq_thresh(self):
         return self.sq_thresh
 
@@ -309,10 +300,10 @@ class fsk_demod(gr.top_block, Qt.QWidget):
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
         self.analog_quadrature_demod_cf_0.set_gain(((self.samp_rate / self.decim) / (2 * math.pi * self.fsk_deviation)))
-        self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.low_pass(1.0, self.samp_rate, 50e3, 20e3))
+        self.freq_xlating_fir_filter_xxx_0.set_taps(firdes.low_pass(1.0, self.samp_rate, 50e3, 40e3))
         self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
-        self.qtgui_freq_sink_x_0_0.set_frequency_range(0, self.samp_rate)
-        self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate)
+        self.qtgui_freq_sink_x_0_0.set_frequency_range(0, (self.samp_rate / self.decim))
+        self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate / self.decim / 10)
         self.soapy_hackrf_source_0.set_sample_rate(0, self.samp_rate)
 
     def get_rf_gain(self):
@@ -320,6 +311,14 @@ class fsk_demod(gr.top_block, Qt.QWidget):
 
     def set_rf_gain(self, rf_gain):
         self.rf_gain = rf_gain
+        self.soapy_hackrf_source_0.set_gain(0, 'LNA', min(max(self.rf_gain, 0.0), 40.0))
+
+    def get_offset_hz(self):
+        return self.offset_hz
+
+    def set_offset_hz(self, offset_hz):
+        self.offset_hz = offset_hz
+        self.freq_xlating_fir_filter_xxx_0.set_center_freq((-500e3 + self.offset_hz))
 
     def get_fsk_deviation(self):
         return self.fsk_deviation
@@ -333,7 +332,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
 
     def set_freq(self, freq):
         self.freq = freq
-        self.soapy_hackrf_source_0.set_frequency(0, (self.freq - 250e3))
+        self.soapy_hackrf_source_0.set_frequency(0, (self.freq + 500e3))
 
     def get_decim(self):
         return self.decim
@@ -341,6 +340,8 @@ class fsk_demod(gr.top_block, Qt.QWidget):
     def set_decim(self, decim):
         self.decim = decim
         self.analog_quadrature_demod_cf_0.set_gain(((self.samp_rate / self.decim) / (2 * math.pi * self.fsk_deviation)))
+        self.qtgui_freq_sink_x_0_0.set_frequency_range(0, (self.samp_rate / self.decim))
+        self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate / self.decim / 10)
 
 
 

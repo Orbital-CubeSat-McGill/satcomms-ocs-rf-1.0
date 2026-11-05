@@ -27,5 +27,16 @@
           pkgs.hackrf
         ];
     };
+
+    # Ground station, apart from the firmware shell so their Pythons can't clash
+    devShells.x86_64-linux.ground = pkgs.mkShell {
+      packages = [
+        pkgs.gnuradio
+        pkgs.gnuradio.pythonEnv
+        pkgs.hackrf
+      ];
+      SOAPY_SDR_PLUGIN_PATH = "${pkgs.soapyhackrf}/lib/SoapySDR/modules0.8-3";
+      QT_PLUGIN_PATH = "${pkgs.gnuradio.qt.qtbase.bin}/${pkgs.gnuradio.qt.qtbase.qtPluginPrefix}";
+    };
   };
 }

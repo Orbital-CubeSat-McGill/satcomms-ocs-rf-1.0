@@ -40,6 +40,7 @@ SYNC_PREAMBLE = 8
 SFD_MAX_ERRORS = 2
 PHR_BITS = 16
 FCS_LEN = 4
+PREAMBLE_HISTORY = 40      # symbols kept before a sync match, to measure the offset
 
 TIMING_GAIN = 0.03
 BURST_THRESHOLD = 4.0       # power over the noise floor: 6 dB, in the wide filter's band
@@ -88,7 +89,7 @@ def find_bursts(z):
         return []
 
     power = np.convolve(np.abs(z) ** 2, np.ones(n_avg) / n_avg, "same")
-    floor = np.percentile(power, 10)
+    floor = np.percentile(power, 2)  # low enough to stay out of the bursts at a high duty cycle
     above = np.concatenate(([False], power > BURST_THRESHOLD * floor, [False]))
     edges = np.flatnonzero(above[1:] != above[:-1])
 
@@ -284,6 +285,93 @@ def decode_burst(z, start, end, noise):
     result["psdu"] = bits_to_bytes(body[PHR_BITS:wanted])
     result["fcs_ok"] = fcs_ok(result["psdu"])
     return result
+
+
+class FrameSync:
+    """
+    Finds frames in a live stream of soft symbols, in units of fdev, for the flowgraph.
+
+    Every sync match is followed on its own, so a false match in the noise between
+    bursts can't swallow a real frame. Either polarity is accepted. Bad FCS frames are
+    only reported when the sync matched exactly: most other failures are just noise.
+    """
+    SYNC_MAX_ERRORS = 2
+
+    def __init__(self):
+        self.template = 2 * np.array(SYNC_BITS, dtype=np.int32) - 1
+        self.buf = np.zeros(0, dtype=np.float32)
+        self.base = 0           # stream position of buf[0]
+        self.searched = 0       # stream position of the next sync start to test
+        self.pending = []       # (sync start, errors, polarity)
+        self.good_end = 0       # candidates starting before this sat inside a good frame
+
+    def feed(self, soft):
+        self.buf = np.concatenate((self.buf, soft))
+        self._search()
+        results = self._finish_candidates()
+
+        oldest = min([c[0] for c in self.pending] + [self.searched])
+        keep_from = max(oldest - PREAMBLE_HISTORY, self.base)
+        self.buf = self.buf[keep_from - self.base:]
+        self.base = keep_from
+        return results
+
+    def _search(self):
+        window = self.buf[self.searched - self.base:]
+        if len(window) < len(self.template):
+            return
+        corr = np.correlate(np.where(window > 0, 1, -1), self.template, "valid")
+        errors = (len(self.template) - np.abs(corr)) // 2
+        for i in np.flatnonzero(errors <= self.SYNC_MAX_ERRORS):
+            self.pending.append((self.searched + int(i), int(errors[i]), 1 if corr[i] > 0 else -1))
+        self.searched += len(corr)
+
+    def _finish_candidates(self):
+        results = []
+        waiting = []
+        end = self.base + len(self.buf)
+
+        for cand in self.pending:
+            start, errors, polarity = cand
+            if start < self.good_end:
+                continue
+            phr_start = start + len(SYNC_BITS)
+            if end < phr_start + PHR_BITS:
+                waiting.append(cand)
+                continue
+
+            soft = self.buf[phr_start - self.base:] * polarity
+            phr = parse_phr((soft[:PHR_BITS] > 0).astype(np.uint8))
+            if not phr["valid"]:
+                continue
+            wanted = PHR_BITS + 8 * phr["len"]
+            if len(soft) < wanted:
+                waiting.append(cand)
+                continue
+
+            psdu = bits_to_bytes((soft[PHR_BITS:wanted] > 0).astype(np.uint8))
+            good = fcs_ok(psdu)
+            if good:
+                self.good_end = phr_start + wanted
+            if good or errors == 0:
+                results.append({
+                    "len": phr["len"],
+                    "psdu": psdu,
+                    "fcs_ok": good,
+                    "polarity": polarity,
+                    "sync_errors": errors,
+                    "offset": self._offset(start),
+                    "deviation": measure_deviation(soft[PHR_BITS:wanted] * DEVIATION),
+                })
+
+        self.pending = waiting
+        return results
+
+    def _offset(self, start):
+        """Mean frequency over whole 01 pairs of preamble: the offset still in the signal."""
+        i = start + SYNC_PREAMBLE - self.base
+        n = min(i, PREAMBLE_HISTORY + SYNC_PREAMBLE) // 2 * 2
+        return float(np.mean(self.buf[i - n:i])) * DEVIATION
 
 
 def decode_capture(path, rate=8e6, tune=915.5e6, freq=915e6):

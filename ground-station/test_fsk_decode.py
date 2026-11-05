@@ -107,6 +107,10 @@ class Decoder(unittest.TestCase):
                 self.assert_good(r[0], tx_burst_payload())
                 self.assertEqual(fd.count_bit_errors(r[0]["psdu"][:-4], PATTERN), (0, 8 * 2043))
 
+    def test_high_duty_cycle(self):
+        r = self.decode([modulate(frame_bits(tx_burst_payload()))] * 3, gap_s=0.02)
+        self.assertEqual(sum(f.get("fcs_ok", False) for f in r), 3)
+
     def test_large_offset(self):
         payload = bytes(range(124))
         r = self.decode([modulate(frame_bits(payload), cfo=40e3)])
@@ -178,6 +182,65 @@ class Fcs(unittest.TestCase):
 
     def test_search_rejects_a_wrong_fcs(self):
         self.assertEqual(fd.fcs_search(self.payload + b"\xde\xad\xbe\xef"), [])
+
+
+class Stream(unittest.TestCase):
+    """FrameSync, fed soft symbols the way the flowgraph's symbol sync would."""
+
+    def soft(self, bits, polarity=1, offset=0.0):
+        return ((2.0 * bits - 1) * polarity + offset / fd.DEVIATION).astype(np.float32)
+
+    def noise(self, n, seed=1):
+        return np.random.default_rng(seed).standard_normal(n).astype(np.float32)
+
+    def run_stream(self, stream, chunk=1000):
+        sync = fd.FrameSync()
+        out = []
+        for i in range(0, len(stream), chunk):
+            out += sync.feed(stream[i:i + chunk])
+        return out
+
+    def test_frame_split_across_chunks(self):
+        payload = bytes(range(124))
+        for chunk in (1, 7, 512, 100000):
+            with self.subTest(chunk=chunk):
+                r = self.run_stream(np.concatenate((self.noise(500), self.soft(frame_bits(payload)), self.noise(50))), chunk)
+                self.assertEqual(len(r), 1)
+                self.assertTrue(r[0]["fcs_ok"])
+                self.assertEqual(r[0]["psdu"][:-4], payload)
+                self.assertEqual(r[0]["polarity"], 1)
+
+    def test_inverted_stream(self):
+        r = self.run_stream(self.soft(frame_bits(bytes(range(124))), polarity=-1))
+        self.assertTrue(r[0]["fcs_ok"])
+        self.assertEqual(r[0]["polarity"], -1)
+
+    def test_offset_is_measured(self):
+        r = self.run_stream(self.soft(frame_bits(bytes(range(124))), offset=5e3))
+        self.assertAlmostEqual(r[0]["offset"], 5e3, delta=100)
+
+    def test_consecutive_frames(self):
+        payloads = [bytes([i]) * 50 for i in range(5)]
+        stream = np.concatenate([np.concatenate((self.noise(100, i), self.soft(frame_bits(p)))) for i, p in enumerate(payloads)])
+        r = self.run_stream(stream)
+        self.assertEqual([f["psdu"][:-4] for f in r], payloads)
+
+    def test_false_sync_does_not_swallow_a_real_frame(self):
+        """A false match claiming the longest length, just before the real frame."""
+        false_start = np.array(fd.SYNC_BITS + [0, 0, 0, 0, 0] + [1] * 11, dtype=np.uint8)
+        payload = bytes(range(124))
+        stream = np.concatenate((self.soft(false_start), self.soft(frame_bits(payload)), self.noise(20000)))
+        good = [f for f in self.run_stream(stream) if f["fcs_ok"]]
+        self.assertEqual(len(good), 1)
+        self.assertEqual(good[0]["psdu"][:-4], payload)
+
+    def test_bad_fcs_is_reported(self):
+        r = self.run_stream(self.soft(frame_bits(bytes(range(124)), crc=b"\xde\xad\xbe\xef")))
+        self.assertEqual(len(r), 1)
+        self.assertFalse(r[0]["fcs_ok"])
+
+    def test_noise_alone_reports_nothing(self):
+        self.assertEqual(self.run_stream(self.noise(500000)), [])
 
 
 class Phr(unittest.TestCase):

@@ -33,27 +33,6 @@ options:
     state: enabled
 
 blocks:
-- name: decim
-  id: variable_qtgui_range
-  parameters:
-    comment: ''
-    gui_hint: ''
-    label: dec
-    min_len: '200'
-    orient: QtCore.Qt.Horizontal
-    rangeType: float
-    start: '0'
-    step: '1'
-    stop: '10'
-    value: '4'
-    widget: slider
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [800, 8.0]
-    rotation: 0
-    state: enabled
 - name: freq
   id: variable_qtgui_range
   parameters:
@@ -121,7 +100,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 2e6
+    value: 8e6
   states:
     bus_sink: false
     bus_source: false
@@ -150,20 +129,74 @@ blocks:
     coordinate: [472, 8.0]
     rotation: 0
     state: enabled
-- name: variable_ieee802_15_4_variant_decoder_0
-  id: variable_ieee802_15_4_variant_decoder
+- name: decim
+  id: variable
   parameters:
-    comment: ''
-    frame_len: '240'
-    preamble: '[85, 85, 85, 85, 85]'
-    preamble_thrsh: '10'
-    sync_thrsh: '3'
-    sync_word: '[144, 78]'
+    comment: 500 kS/s after the filter, so 10 samples per symbol
+    value: '16'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [592, 8.0]
+    coordinate: [800, 8.0]
+    rotation: 0
+    state: enabled
+- name: offset_hz
+  id: variable_qtgui_range
+  parameters:
+    comment: Frequency offset between the radios. Set it from the decoder's offset= output
+    gui_hint: ''
+    label: Offset (Hz)
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: -50e3
+    step: 500
+    stop: 50e3
+    value: '0'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1200, 8.0]
+    rotation: 0
+    state: enabled
+- name: blocks_moving_average_xx_0
+  id: blocks_moving_average_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: One symbol, matched to the rectangular FSK pulse
+    length: '10'
+    max_iter: '4000'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '0.1'
+    type: float
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [880, 472.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_0
+  id: epy_block
+  parameters:
+    _source_code: "\"\"\"\nDecodes the hat's MR-FSK frames from the symbol sync's soft symbols, and prints them.\nThe frame logic is FrameSync in ground-station/fsk_decode.py.\n\"\"\"\nimport os\nimport sys\n\nimport numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    \"\"\"OCS-RF frame decoder\"\"\"\n\n    def __init__(self, expect='tx-burst'):\n        gr.sync_block.__init__(self, name='OCS-RF frame decoder', in_sig=[np.float32], out_sig=None)\n        self.expect = expect\n        self.fd = None\n        self.frames = []\n\n    def _load(self):\n        # Not at import time: GRC also runs this file, from somewhere else, to read the ports\n        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))\n        import fsk_decode\n        self.fd = fsk_decode\n        self.sync = fsk_decode.FrameSync()\n        self.pattern = fsk_decode.PATTERNS.get(self.expect)\n\n    def work(self, input_items, output_items):\n        if self.fd is None:\n            self._load()\n        for r in self.sync.feed(np.array(input_items[0])):\n            self.frames.append(r)\n            print(self._format(r), flush=True)\n        return len(input_items[0])\n\n    def _format(self, r):\n        good = sum(f['fcs_ok'] for f in self.frames)\n        line = (f\"[{len(self.frames):4}] len={r['len']} fcs={'ok ' if r['fcs_ok'] else 'BAD'} ok={good}\"\n                f\" pol={'+' if r['polarity'] > 0 else '-'} sync_err={r['sync_errors']}\"\n                f\" offset={r['offset'] / 1e3:+5.1f}kHz dev={r['deviation'] / 1e3:4.1f}kHz\")\n        if self.pattern:\n            errors, total = self.fd.count_bit_errors(r['psdu'][:-self.fd.FCS_LEN], self.pattern)\n            line += f\" bit_err={errors}/{total}\"\n        return line + f\" {r['psdu'][:32]!r}\"\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    expect: "'tx-burst'"
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [504, 808.0]
     rotation: 0
     state: enabled
 - name: analog_quadrature_demod_cf_0
@@ -216,39 +249,6 @@ blocks:
     coordinate: [248, 968.0]
     rotation: 0
     state: enabled
-- name: blocks_message_debug_0
-  id: blocks_message_debug
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    en_uvec: 'True'
-    log_level: info
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [840, 744.0]
-    rotation: 0
-    state: enabled
-- name: blocks_multiply_const_vxx_0
-  id: blocks_multiply_const_vxx
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    const: '-1'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    type: float
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [872, 336.0]
-    rotation: 0
-    state: enabled
 - name: digital_binary_slicer_fb_0
   id: digital_binary_slicer_fb
   parameters:
@@ -269,10 +269,10 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: ''
+    comment: Must lock within the 64 bit preamble. Slower loops slip bits mid-frame on simulated captures
     constellation: digital.constellation_bpsk().base()
     damping: '1.0'
-    loop_bw: '0.01'
+    loop_bw: '0.15'
     max_dev: '0.1'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -282,7 +282,7 @@ blocks:
     resamp_type: digital.IR_MMSE_8TAP
     sps: '10'
     ted_gain: '1.0'
-    ted_type: digital.TED_EARLY_LATE
+    ted_type: digital.TED_GARDNER
     type: ff
   states:
     bus_sink: false
@@ -296,13 +296,13 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    center_freq: 250e3
+    center_freq: -500e3 + offset_hz
     comment: ''
-    decim: '4'
+    decim: decim
     maxoutbuf: '0'
     minoutbuf: '0'
     samp_rate: samp_rate
-    taps: firdes.low_pass(1.0, samp_rate, 50e3, 20e3)
+    taps: firdes.low_pass(1.0, samp_rate, 50e3, 40e3)
     type: ccc
   states:
     bus_sink: false
@@ -462,7 +462,7 @@ blocks:
     autoscale: 'False'
     average: '1.0'
     axislabels: 'True'
-    bw: samp_rate
+    bw: samp_rate / decim
     color1: '"blue"'
     color10: '"dark blue"'
     color2: '"red"'
@@ -678,7 +678,7 @@ blocks:
     name: Demod
     nconnections: '2'
     size: '1024'
-    srate: samp_rate
+    srate: samp_rate / decim / 10
     stemplot: 'False'
     style1: '3'
     style10: '1'
@@ -780,24 +780,6 @@ blocks:
     coordinate: [288, 344.0]
     rotation: 0
     state: disabled
-- name: satnogs_frame_decoder_0
-  id: satnogs_frame_decoder
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    decoder_object: variable_ieee802_15_4_variant_decoder_0
-    itype: byte
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [504, 808.0]
-    rotation: 0
-    state: enabled
 - name: soapy_hackrf_source_0
   id: soapy_hackrf_source
   parameters:
@@ -805,10 +787,10 @@ blocks:
     alias: ''
     amp: 'False'
     bandwidth: '0'
-    center_freq: freq - 250e3
+    center_freq: freq + 500e3
     comment: ''
     dev_args: ''
-    gain: '16'
+    gain: rf_gain
     maxoutbuf: '0'
     minoutbuf: '0'
     samp_rate: samp_rate
@@ -849,21 +831,20 @@ blocks:
     state: enabled
 
 connections:
-- [analog_quadrature_demod_cf_0, '0', blocks_multiply_const_vxx_0, '0']
+- [analog_quadrature_demod_cf_0, '0', blocks_moving_average_xx_0, '0']
 - [analog_simple_squelch_cc_0, '0', analog_quadrature_demod_cf_0, '0']
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0_0, '1']
-- [blocks_multiply_const_vxx_0, '0', digital_symbol_sync_xx_0, '0']
+- [blocks_moving_average_xx_0, '0', digital_symbol_sync_xx_0, '0']
 - [digital_binary_slicer_fb_0, '0', blocks_char_to_float_0, '0']
-- [digital_binary_slicer_fb_0, '0', satnogs_frame_decoder_0, '0']
 - [digital_symbol_sync_xx_0, '0', virtual_sink_0, '0']
 - [freq_xlating_fir_filter_xxx_0, '0', analog_simple_squelch_cc_0, '0']
 - [freq_xlating_fir_filter_xxx_0, '0', qtgui_freq_sink_x_0_0, '0']
-- [satnogs_frame_decoder_0, out, blocks_message_debug_0, print_pdu]
 - [soapy_hackrf_source_0, '0', freq_xlating_fir_filter_xxx_0, '0']
 - [soapy_hackrf_source_0, '0', qtgui_freq_sink_x_0, '0']
 - [soapy_hackrf_source_0, '0', qtgui_time_sink_x_0, '0']
 - [soapy_hackrf_source_0, '0', qtgui_waterfall_sink_x_0, '0']
 - [virtual_source_0, '0', digital_binary_slicer_fb_0, '0']
+- [virtual_source_0, '0', epy_block_0, '0']
 - [virtual_source_0, '0', qtgui_time_sink_x_0_0, '0']
 
 metadata:
