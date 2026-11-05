@@ -1,0 +1,20 @@
+description: Atmel AT86RF215 Dual-band IEEE 802.15.4 / Sub-GHz Transceiver
+
+compatible: "atmel,at86rf215"
+
+include: spi-device.yaml
+
+properties:
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Interrupt Request pin for the AT86RF215. The transceiver asserts this 
+      pin (active high by default) when a radio event occurs.
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Hardware reset pin for the AT86RF215. This is an active-low signal 
+      used to hard-reset the transceiver during initialization.
