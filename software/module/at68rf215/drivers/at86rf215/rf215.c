@@ -9,6 +9,8 @@
 
 LOG_MODULE_REGISTER(rf215);
 
+// Far longer than the 500 us the datasheet gives for tPOWERON
+#define RF215_RESET_TIMEOUT_MS 10
 
 static int rf215_reset(const struct device *dev);
 
@@ -72,6 +74,9 @@ static void rf215_post_events(const uint8_t *irqs, struct rf215_data *data)
     // Check for interrupts set in the IRQ bit mask
     // if you add more masks make sure to implement them here
     // Also make sure that the new event you implement is added to the event enum
+    if (irqs[0] & RF_WAKEUP) {
+        events |= RF09_EVT_WAKEUP;
+    }
     if (irqs[0] & RF_TRXRDY) {
         events |= RF09_EVT_TRXRDY;
     }
@@ -79,6 +84,9 @@ static void rf215_post_events(const uint8_t *irqs, struct rf215_data *data)
         events |= RF09_EVT_ERROR;
     }
 
+    if (irqs[1] & RF_WAKEUP) {
+        events |= RF24_EVT_WAKEUP;
+    }
     if (irqs[1] & RF_TRXRDY) {
         events |= RF24_EVT_TRXRDY;
     }
@@ -143,12 +151,14 @@ static void rf215_irq_work(struct k_work *work)
  *
  * Sets up the driver data (mutex, work item, event object, default chip
  * mode), checks that the SPI bus and GPIOs are ready, configures the reset
- * and IRQ pins, resets the chip, registers the IRQ callback, discards any
- * stale IRQ state and finally enables the IRQ pin interrupt.
+ * and IRQ pins, resets the chip, checks that it answers and stores its version,
+ * registers the IRQ callback, discards any stale IRQ state and finally enables
+ * the IRQ pin interrupt.
  *
  * @param dev the device handle
  * @return 0 on success, -ENODEV if a bus or GPIO is not ready or cannot be
- *         configured, or a negative error code from the GPIO or SPI layer
+ *         configured or no supported chip answers, or a negative error code
+ *         from the GPIO or SPI layer
  *
  * @note The return value of rf215_reset() is currently ignored.
  */
@@ -207,6 +217,23 @@ static int rf215_init(const struct device *dev)
         return result;
     }
 
+    // SPI has no ack, so an absent chip only shows up as a bad part number.
+    // This has to come after reset: the chip does not answer while held in it
+    uint8_t part = 0;
+    result = rf215_conn_check(dev, &part);
+    if (result < 0) {
+        LOG_ERR("No AT86RF215 found, part=0x%02x, Error Code: %d", part, result);
+        return -ENODEV;
+    }
+
+    result = rf215_blk_read(dev, REG_RF_VN, &data->version, 1);
+    if (result != 0) {
+        LOG_ERR("Could not read version register. Error Code: %d", result);
+        return result;
+    }
+
+    LOG_INF("Found part=0x%02x version=0x%02x", part, data->version);
+
     result = rf215_select_preset(dev, RF09, data->preset_idx);
     if (result < 0) {
         return result;
@@ -230,15 +257,57 @@ static int rf215_init(const struct device *dev)
 }
 
 /**
- * @brief Hardware-reset the chip and apply the baseline configuration.
+ * @brief Wait for the chip to report that its reset has finished.
  *
- * Pulses the reset pin (assert, 10 ms, release, 10 ms), then writes the chip
- * mode (data->op_mode) to IQIFC1 and unmasks the interrupts the driver
- * handles (RXFS, RXFE and TXFE on both baseband cores, TRXRDY and TRXERR on
- * both radios). All previous register state is lost.
+ * The chip signals the end of a reset with WAKEUP on both radios, which raises
+ * the IRQ pin (section 4.1.3). Polls the pin, because this runs before the IRQ
+ * callback is registered, then reads the status registers. Reading them also
+ * clears WAKEUP, which releases the pin.
  *
  * @param dev the device handle
- * @return 0 on success or a negative error code from the GPIO or SPI layer
+ * @return 0 on success, -ENODEV if WAKEUP did not arrive in time, or a negative
+ *         error code from the SPI layer
+ */
+static int rf215_wait_wakeup(const struct device *dev)
+{
+    const struct rf215_config *cfg = (const struct rf215_config *) dev->config;
+    uint8_t irqs[4]; /* RF09, RF24, BBC0, BBC1 */
+    int waited_ms = 0;
+
+    while (gpio_pin_get_dt(&cfg->rf215_irq) <= 0) {
+        if (waited_ms >= RF215_RESET_TIMEOUT_MS) {
+            LOG_ERR("IRQ pin did not rise after reset");
+            return -ENODEV;
+        }
+        k_msleep(1);
+        waited_ms++;
+    }
+
+    int result = rf215_blk_read(dev, REG_RF09_IRQS, irqs, sizeof(irqs));
+    if (result != 0) {
+        LOG_ERR("Could not read from IRQ registers. Error Code: %d", result);
+        return result;
+    }
+
+    if (!(irqs[0] & RF_WAKEUP) || !(irqs[1] & RF_WAKEUP)) {
+        LOG_ERR("No WAKEUP after reset, rf09=0x%02x rf24=0x%02x", irqs[0], irqs[1]);
+        return -ENODEV;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Hardware-reset the chip and apply the baseline configuration.
+ *
+ * Pulses the reset pin (assert, 10 ms, release), waits for WAKEUP, then writes
+ * the chip mode (data->op_mode) to IQIFC1 and unmasks the interrupts the driver
+ * handles (RXFS, RXFE and TXFE on both baseband cores, WAKEUP, TRXRDY and
+ * TRXERR on both radios). All previous register state is lost.
+ *
+ * @param dev the device handle
+ * @return 0 on success, -ENODEV if the chip did not report WAKEUP, or a negative
+ *         error code from the GPIO or SPI layer
  *
  * @note The reset pin polarity depends on the devicetree flags: the
  *       assert/release sequence assumes the pin is marked active-low.
@@ -261,7 +330,10 @@ static int rf215_reset(const struct device *dev)
         return result;
     }
 
-    k_msleep(10);
+    result = rf215_wait_wakeup(dev);
+    if (result != 0) {
+        return result;
+    }
 
     // set all register configurations here
     // set operating mode to baseband for both transceivers

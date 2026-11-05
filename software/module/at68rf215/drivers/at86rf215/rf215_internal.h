@@ -386,6 +386,7 @@ struct rf215_data {
     struct k_mutex bus_lock;   /* if other threads also touch the chip */
     struct k_event events;
     rf215_chpm_t op_mode;
+    uint8_t version;        /* RF_VN, read at init */
     uint8_t num_presets;
     uint8_t  preset_idx;    /* which preset is active */
     uint16_t channel;       /* runtime */
