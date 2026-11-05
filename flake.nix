@@ -24,6 +24,7 @@
           zephyr.hosttools
           pkgs.cmake
           pkgs.ninja
+          pkgs.hackrf
         ];
     };
   };
