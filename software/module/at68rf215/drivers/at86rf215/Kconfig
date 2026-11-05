@@ -1,0 +1,17 @@
+config IEEE802154_AT86RF215
+	bool "AT86RF215 IEEE 802.15.4 Transceiver driver"
+	default y
+	depends on DT_HAS_ATMEL_AT86RF215_ENABLED
+	select GPIO
+	select SPI
+	select EVENTS
+	help
+	  Enable support for the Microchip/Atmel AT86RF215 transceiver driver.
+
+config IEEE802154_AT86RF215_INIT_PRIORITY
+	int "AT86RF215 init priority"
+	default 80
+	depends on IEEE802154_AT86RF215
+	help
+	  Device init priority. The driver talks to the chip during init, so this
+	  must be higher (later) than SPI_INIT_PRIORITY.

@@ -5,50 +5,70 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/kernel.h>
 
+/**
+ * Radio front-end
+ */
+typedef enum
+{
+  RF09 = 0, //!< Sub-1 GHz radio
+  RF24 = 1, //!< 2.4 GHz radio
+} rf215_radio_t;
+
+// Values that can be read with get_value, useful for logging and evaluating link resilience
+typedef enum
+{
+    RSSI,
+    EDV,
+    AGC,
+} get_variable;
+
+/**
+ * Channel mode configuration
+ */
+typedef enum
+{
+  RF215_CM_IEEE = 0, //!< IEEE compliant
+  RF215_CM_FINE_RES_04 =
+  1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
+  RF215_CM_FINE_RES_09 =
+  2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
+  RF215_CM_FINE_RES_24 =
+  3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
+} rf215_cm_t;
+
+/**
+ * PLL loop bandwidth setting
+ */
+typedef enum
+{
+  RF215_PLL_LBW_DEFAULT = 0, //!< Default
+  RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
+  RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
+} rf215_pll_lbw_t;
+
+struct rf215_radio_conf
+{
+  rf215_cm_t          cm;        //!< Channel scheme, only RF215_CM_IEEE is implemented
+  uint32_t            cs;        //!< Channel spacing in Hz, a multiple of 25 kHz up to 6.375 MHz
+  uint32_t            base_freq; //!< Frequency of channel 0 in Hz, a multiple of 25 kHz
+  rf215_pll_lbw_t     lbw;       //!< PLL loop bandwidth, RF09 only (ignored for RF24)
+};
+
 struct rf215_api {
-    int (*conn_check)(const struct device *dev); //confirm at86rf215 is connected and alive
+    int (*conn_check)(const struct device *dev, uint8_t *part); //confirm at86rf215 is connected and alive, part gets the raw part number
     int (*set_sleep)(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
-    int (*select_preset)(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
-    int (*set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
-    int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, int8_t dbm);
+    int (*radio_conf)(const struct device *dev, rf215_radio_t radio, const struct rf215_radio_conf *conf); //set channel spacing, base frequency and PLL bandwidth, needs TRXOFF, resets to channel 0
+    int (*select_preset)(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* needs TRXOFF, applies baseband and frontend settings */
+    int (*set_channel)(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* needs TRXOFF or TXPREP, refused if the frequency leaves the chip's band */
+    int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, uint8_t txpwr); /* raw TXPWR register step, 0..31 */
     int (*bb_enable)(const struct device *dev, rf215_radio_t radio, uint8_t en);
-    int (*get_value)(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
+    int (*get_pll_ls)(const struct device *dev, uint8_t *state, rf215_radio_t radio); // state gets 1 if the PLL is locked
+    int (*get_value)(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value); //get a variable from get_variable enum to value
     int (*tx_buffer)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
     int (*radio_tx)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
     int (*radio_rx)(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
     int (*rx_frame)(const struct device *dev, rf215_radio_t radio, uint8_t *psdu, size_t len); // get data from RX buffer
 };
-
-struct rf215_config {
-    struct spi_dt_spec rf215_spi;
-    struct gpio_dt_spec rf215_rst;
-    struct gpio_dt_spec rf215_irq;
-    const struct rf215_bb_conf *presets;
-    uint8_t num_presets;
-    uint8_t preset_idx;
-    uint8_t id;
-};
-
-// Set struct for chip irq triggers and lock spi access
-struct rf215_data {
-    const struct device *dev;
-    const struct rf215_bb_conf *preset;
-    struct gpio_callback irq_cb;
-    struct k_work irq_work;
-    struct k_mutex bus_lock;   /* if other threads also touch the chip */
-    struct k_event events;
-    rf215_chpm_t op_mode;
-    uint8_t num_presets;
-    uint8_t  preset_idx;    /* which preset is active */
-    uint16_t channel;       /* runtime */
-    int8_t   tx_power;      /* runtime */
-};
-
-// Enums for get functions
-typedef enum
-{
-    something,
-}r215_get;
 
 //------------------------------------------------------------------------------
 // Start of Declaration of radio configuration
@@ -219,9 +239,27 @@ typedef enum
  */
 typedef enum
 {
-  RF215_FCS_16 = 0, //!< 16-bit
-  RF215_FCS_32 = 1  //!< 32-bit
+  RF215_FCS_32 = 0, //!< 32-bit
+  RF215_FCS_16 = 1  //!< 16-bit
 } rf215_fcs_t;
+
+/**
+ * Radio frontend settings for a symbol rate and modulation index. SR depends on
+ * the chip version (table 6-51). TXDFE.DM comes from the preset's dm.
+ */
+struct rf215_fe_conf
+{
+  uint8_t paramp;   //!< TXCUTC.PARAMP: PA ramp time
+  uint8_t lpfcut;   //!< TXCUTC.LPFCUT: TX low pass cut-off
+  uint8_t tx_rcut;  //!< TXDFE.RCUT: TX relative cut-off
+  uint8_t tx_sr;    //!< TXDFE.SR: TX sample rate
+  uint8_t rx_bw;    //!< RXBWC.BW: RX bandwidth
+  uint8_t rx_ifs;   //!< RXBWC.IFS: IF shift
+  uint8_t rx_rcut;  //!< RXDFE.RCUT: RX relative cut-off
+  uint8_t rx_sr;    //!< RXDFE.SR: RX sample rate
+  uint8_t agc_avgs; //!< AGCC.AVGS: AGC averaging time
+  uint8_t agc_tgt;  //!< AGCS.TGT: AGC target level
+};
 
 struct rf215_bb_conf
 {
@@ -230,6 +268,7 @@ struct rf215_bb_conf
   uint8_t         txafcs : 1;
   rf215_fcs_t fcst;
   rf215_phy_t pt;
+  struct rf215_fe_conf fe[2]; //!< indexed by rf215_radio_t
   union
   {
     struct rf215_mrfsk_conf fsk;

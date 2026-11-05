@@ -1,0 +1,35 @@
+description: Atmel AT86RF215 Dual-band IEEE 802.15.4 / Sub-GHz Transceiver
+
+compatible: "atmel,at86rf215"
+
+include: spi-device.yaml
+
+properties:
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Interrupt Request pin for the AT86RF215. The transceiver asserts this 
+      pin (active high by default) when a radio event occurs.
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Hardware reset pin for the AT86RF215. This is an active-low signal 
+      used to hard-reset the transceiver during initialization.
+
+  rf09-base-freq-hz:
+    type: int
+    required: true
+    description: |
+      Frequency of channel 0 on the sub-1GHz radio, in Hz. Depends on the
+      board and the region. Must be a multiple of 25 kHz inside the chip's
+      bands, or init fails.
+
+  rf09-channel-spacing-hz:
+    type: int
+    required: true
+    description: |
+      Spacing between channels on the sub-1GHz radio, in Hz. Must be a
+      multiple of 25 kHz, up to 6.375 MHz, or init fails.

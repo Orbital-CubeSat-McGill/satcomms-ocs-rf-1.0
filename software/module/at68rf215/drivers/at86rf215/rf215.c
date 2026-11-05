@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 #include "rf215.h"
 #include "rf215_internal.h"
 #include "rf215_regs.h"
@@ -9,17 +10,29 @@
 
 LOG_MODULE_REGISTER(rf215);
 
+// Far longer than the 500 us the datasheet gives for tPOWERON
+#define RF215_RESET_TIMEOUT_MS 10
+
+// CS and CCF0 are in steps of 25 kHz, and RF24 frequencies have a 1.5 GHz offset (section 6.3.2)
+#define RF215_FREQ_STEP_HZ   25000U
+#define RF215_RF24_OFFSET_HZ 1500000000U
+#define RF215_RF09_LOW_MAX_HZ 510000000U
+#define RF215_CN_MAX         0x1FF
+#define RF215_PLL_LBW_MASK   GENMASK(5, 4)
+
+static int rf215_reset(const struct device *dev);
 
 //------------------------------------------------------------------------------
 //forward declarations of functions passed through to the api
 //------------------------------------------------------------------------------
-static int rf215_conn_check(const struct device *dev); //confirm at86rf215 is connected and alive
+static int rf215_conn_check(const struct device *dev, uint8_t *part); //confirm at86rf215 is connected and alive, part gets the raw part number
 static int rf215_set_sleep(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
-static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
-static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
-static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm);
+static int rf215_radio_conf(const struct device *dev, rf215_radio_t radio, const struct rf215_radio_conf *conf); //set channel spacing, base frequency and PLL bandwidth
+static int rf215_select_preset(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* needs TRXOFF, applies baseband and frontend settings */
+static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* needs TRXOFF or TXPREP, refused if the frequency leaves the chip's band */
+static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, uint8_t txpwr); /* raw TXPWR register step, 0..31 */
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en);
-static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
+static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value); //get a variable from get_variable enum to value
 static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
 static int rf215_tx(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
 static int rf215_rx(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
@@ -70,6 +83,9 @@ static void rf215_post_events(const uint8_t *irqs, struct rf215_data *data)
     // Check for interrupts set in the IRQ bit mask
     // if you add more masks make sure to implement them here
     // Also make sure that the new event you implement is added to the event enum
+    if (irqs[0] & RF_WAKEUP) {
+        events |= RF09_EVT_WAKEUP;
+    }
     if (irqs[0] & RF_TRXRDY) {
         events |= RF09_EVT_TRXRDY;
     }
@@ -77,6 +93,9 @@ static void rf215_post_events(const uint8_t *irqs, struct rf215_data *data)
         events |= RF09_EVT_ERROR;
     }
 
+    if (irqs[1] & RF_WAKEUP) {
+        events |= RF24_EVT_WAKEUP;
+    }
     if (irqs[1] & RF_TRXRDY) {
         events |= RF24_EVT_TRXRDY;
     }
@@ -141,12 +160,14 @@ static void rf215_irq_work(struct k_work *work)
  *
  * Sets up the driver data (mutex, work item, event object, default chip
  * mode), checks that the SPI bus and GPIOs are ready, configures the reset
- * and IRQ pins, resets the chip, registers the IRQ callback, discards any
- * stale IRQ state and finally enables the IRQ pin interrupt.
+ * and IRQ pins, resets the chip, checks that it answers and stores its version,
+ * registers the IRQ callback, discards any stale IRQ state and finally enables
+ * the IRQ pin interrupt.
  *
  * @param dev the device handle
  * @return 0 on success, -ENODEV if a bus or GPIO is not ready or cannot be
- *         configured, or a negative error code from the GPIO or SPI layer
+ *         configured or no supported chip answers, or a negative error code
+ *         from the GPIO or SPI layer
  *
  * @note The return value of rf215_reset() is currently ignored.
  */
@@ -205,8 +226,38 @@ static int rf215_init(const struct device *dev)
         return result;
     }
 
+    // SPI has no ack, so an absent chip only shows up as a bad part number.
+    // This has to come after reset: the chip does not answer while held in it
+    uint8_t part = 0;
+    result = rf215_conn_check(dev, &part);
+    if (result < 0) {
+        LOG_ERR("No AT86RF215 found, part=0x%02x, Error Code: %d", part, result);
+        return -ENODEV;
+    }
+
+    result = rf215_blk_read(dev, REG_RF_VN, &data->version, 1);
+    if (result != 0) {
+        LOG_ERR("Could not read version register. Error Code: %d", result);
+        return result;
+    }
+
+    LOG_INF("Found part=0x%02x version=0x%02x", part, data->version);
+
     result = rf215_select_preset(dev, RF09, data->preset_idx);
     if (result < 0) {
+        return result;
+    }
+
+    const struct rf215_radio_conf rf09_conf = {
+        .cm = RF215_CM_IEEE,
+        .cs = cfg->rf09_channel_spacing_hz,
+        .base_freq = cfg->rf09_base_freq_hz,
+        .lbw = RF215_PLL_LBW_DEFAULT,
+    };
+
+    result = rf215_radio_conf(dev, RF09, &rf09_conf);
+    if (result < 0) {
+        LOG_ERR("RF09 frequency config refused: %d", result);
         return result;
     }
 
@@ -228,15 +279,58 @@ static int rf215_init(const struct device *dev)
 }
 
 /**
- * @brief Hardware-reset the chip and apply the baseline configuration.
+ * @brief Wait for the chip to report that its reset has finished.
  *
- * Pulses the reset pin (assert, 10 ms, release, 10 ms), then writes the chip
- * mode (data->op_mode) to IQIFC1 and unmasks the interrupts the driver
- * handles (RXFS, RXFE and TXFE on both baseband cores, TRXRDY and TRXERR on
- * both radios). All previous register state is lost.
+ * The chip signals the end of a reset with WAKEUP on both radios, which raises
+ * the IRQ pin (section 4.1.3). Polls the pin, because this runs before the IRQ
+ * callback is registered, then reads the status registers. Reading them also
+ * clears WAKEUP, which releases the pin.
  *
  * @param dev the device handle
- * @return 0 on success or a negative error code from the GPIO or SPI layer
+ * @return 0 on success, -ENODEV if WAKEUP did not arrive in time, or a negative
+ *         error code from the SPI layer
+ */
+static int rf215_wait_wakeup(const struct device *dev)
+{
+    const struct rf215_config *cfg = (const struct rf215_config *) dev->config;
+    uint8_t irqs[4]; /* RF09, RF24, BBC0, BBC1 */
+    int waited_ms = 0;
+
+    while (gpio_pin_get_dt(&cfg->rf215_irq) <= 0) {
+        if (waited_ms >= RF215_RESET_TIMEOUT_MS) {
+            LOG_ERR("IRQ pin did not rise after reset");
+            return -ENODEV;
+        }
+        k_msleep(1);
+        waited_ms++;
+    }
+
+    int result = rf215_blk_read(dev, REG_RF09_IRQS, irqs, sizeof(irqs));
+    if (result != 0) {
+        LOG_ERR("Could not read from IRQ registers. Error Code: %d", result);
+        return result;
+    }
+
+    if (!(irqs[0] & RF_WAKEUP) || !(irqs[1] & RF_WAKEUP)) {
+        LOG_ERR("No WAKEUP after reset, rf09=0x%02x rf24=0x%02x", irqs[0], irqs[1]);
+        return -ENODEV;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Hardware-reset the chip and apply the baseline configuration.
+ *
+ * Pulses the reset pin (assert, 10 ms, release), waits for WAKEUP, then writes
+ * the chip mode (data->op_mode) to IQIFC1, sets the common registers (RF_CFG,
+ * RF_CLKO, RF_XOC and both PADFE) and unmasks the interrupts the driver
+ * handles (RXFS, RXFE and TXFE on both baseband cores, WAKEUP, TRXRDY and
+ * TRXERR on both radios). All previous register state is lost.
+ *
+ * @param dev the device handle
+ * @return 0 on success, -ENODEV if the chip did not report WAKEUP, or a negative
+ *         error code from the GPIO or SPI layer
  *
  * @note The reset pin polarity depends on the devicetree flags: the
  *       assert/release sequence assumes the pin is marked active-low.
@@ -259,15 +353,52 @@ static int rf215_reset(const struct device *dev)
         return result;
     }
 
-    k_msleep(10);
+    result = rf215_wait_wakeup(dev);
+    if (result != 0) {
+        return result;
+    }
 
     // set all register configurations here
     // set operating mode to baseband for both transceivers
     // if you add more masks make sure to implement them in post_event function
-    uint8_t mode = data->op_mode;
+    // CHPM is bits 6:4, keep SKEWDRV (bits 1:0) at its reset value (section 4.5.8.2)
+    uint8_t mode;
+    result = rf215_blk_read(dev, REG_RF_IQIFC1, &mode, 1);
+    if (result != 0) {
+        return result;
+    }
+    mode = (mode & 0x3) | (data->op_mode << 4);
     result = rf215_blk_write(dev, REG_RF_IQIFC1, &mode, 1);
     if (result != 0) {
         return result;
+    }
+
+    // Common registers, written even when they match the reset value so the
+    // driver states what it relies on.
+    static const struct {
+        uint16_t reg;
+        uint8_t val;
+    } common[] = {
+        // IRQ reasons not masked out of IRQS, IRQ active high (the devicetree
+        // assumes this), 4 mA pads (section 4.3.1.1)
+        { REG_RF_CFG, 0x09 },
+        // 26 MHz on CLKO at 4 mA. Nothing uses it, keep it on for clock debugging
+        // for now. Writing 0x08 turns it off (section 4.4.1.1)
+        { REG_RF_CLKO, 0x09 },
+        // TRIM and FS only act on a crystal, and the hat has a TCXO. Any TRIM just
+        // loads the TCXO pin, so keep it at 0 (section 6.4.4.1)
+        { REG_RF_XOC, 0x10 },
+        // FEAnn and FEBnn are not connected on the hat, so no frontend control
+        // (section 6.5.4.2). Transceiver SLEEP resets these two
+        { REG_RF09_PADFE, 0x00 },
+        { REG_RF24_PADFE, 0x00 },
+    };
+
+    for (size_t i = 0; i < ARRAY_SIZE(common); i++) {
+        result = rf215_blk_write(dev, common[i].reg, &common[i].val, 1);
+        if (result != 0) {
+            return result;
+        }
     }
 
     // IRQ mask setup (when writing to this register you enable these types of interrupts)
@@ -386,18 +517,23 @@ static int rf215_get_pll_ls(const struct device *dev, uint8_t *state, rf215_radi
  * Reads the part number register and compares it against the known device
  * family values (RF215, RF215IQ, RF215M).
  *
- * @param dev the device handle
- * @return RF215_OK if a supported chip answered, a negative error code if
- *         the part number is not recognized or the SPI read fails
+ * @param dev  the device handle
+ * @param part output: the raw part number. Also set when it is not recognized,
+ *             so the caller can see what actually came back over the bus
+ * @return RF215_OK if a supported chip answered, RF215_INVAL_PARAM if part is
+ *         NULL, or a negative error code if the part number is not recognized
+ *         or the SPI read fails
  */
-static int rf215_conn_check(const struct device *dev)
+static int rf215_conn_check(const struct device *dev, uint8_t *part)
 {
-    uint8_t part = 0;
-    int ret = rf215_blk_read(dev, REG_RF_PN, &part, 1);
+    if (!part) {
+        return RF215_INVAL_PARAM;
+    }
+    int ret = rf215_blk_read(dev, REG_RF_PN, part, 1);
     if (ret) {
         return ret;
     }
-    switch (part) {
+    switch (*part) {
         case RF215:
         case RF215IQ:
         case RF215M:
@@ -443,7 +579,7 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
 		reg = REG_RF09_AGCS;
 		break;
 	default:
-		return -RF215_INVAL_VAL;
+		return RF215_INVAL_VAL;
 	}
     }else{
 	switch (var){
@@ -457,10 +593,10 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
 		reg = REG_RF24_AGCS;
 		break;
 	default:
-		return -RF215_INVAL_VAL;
+		return RF215_INVAL_VAL;
 	}
     }
-    return rf215_blk_write(dev, reg, &value, 1);
+    return rf215_blk_read(dev, reg, value, 1);
 }
 
 //------------------------------------------------------------------------------
@@ -475,6 +611,91 @@ static int rf215_get_value(const struct device *dev, rf215_radio_t radio, get_va
  * Does not enable the baseband (see rf215_bb_enable) and does not set
  * channel or TX power.
  */
+/**
+ * @brief Check a frequency against the ranges the radio supports.
+ *
+ * The chip does not protect itself against other values (section 6.3.2).
+ */
+static bool rf215_freq_valid(rf215_radio_t radio, uint64_t freq)
+{
+    if (radio == RF24) {
+        return freq >= 2400000000U && freq <= 2483500000U;
+    }
+    return (freq >= 389500000U && freq <= RF215_RF09_LOW_MAX_HZ) ||
+           (freq >= 779000000U && freq <= 1020000000U);
+}
+
+/**
+ * @brief Set the channel spacing, base frequency and PLL bandwidth of a radio.
+ *
+ * The radio has to be in TRXOFF. Nothing is written unless every argument is
+ * valid. Also selects channel 0, so the radio ends up on conf->base_freq: use
+ * set_channel afterwards to move. Doesn't start the PLL or transmit.
+ *
+ * @param dev   the device handle
+ * @param radio the RF frontend (RF09 or RF24)
+ * @param conf  the configuration to apply
+ * @return RF215_OK on success, RF215_INVAL_PARAM if an argument is invalid,
+ *         RF215_NOT_IMPL for a fine resolution channel mode, RF215_INVAL_CONF if
+ *         the radio is not in TRXOFF, or a negative error code from the SPI layer
+ */
+static int rf215_radio_conf(const struct device *dev, rf215_radio_t radio,
+                            const struct rf215_radio_conf *conf)
+{
+    if (conf == NULL || (radio != RF09 && radio != RF24)) {
+        return RF215_INVAL_PARAM;
+    }
+    if (conf->cm != RF215_CM_IEEE) {
+        return RF215_NOT_IMPL;
+    }
+    if (conf->cs % RF215_FREQ_STEP_HZ != 0 || conf->cs / RF215_FREQ_STEP_HZ > 0xFF) {
+        return RF215_INVAL_PARAM;
+    }
+    if (conf->base_freq % RF215_FREQ_STEP_HZ != 0 ||
+        !rf215_freq_valid(radio, conf->base_freq)) {
+        return RF215_INVAL_PARAM;
+    }
+    if (radio == RF09 && conf->lbw != RF215_PLL_LBW_DEFAULT &&
+        conf->lbw != RF215_PLL_LBW_SMALLER && conf->lbw != RF215_PLL_LBW_LARGER) {
+        return RF215_INVAL_PARAM;
+    }
+
+    rf215_state_t state;
+    int ret = rf215_state_get(dev, &state, radio);
+    if (ret) {
+        return ret;
+    }
+    if (state != STATE_RF_TRXOFF) {
+        return RF215_INVAL_CONF;
+    }
+
+    // LBW is RF09 only. Keep the other PLL bits: bit 3 resets to 1 (section 6.3.3.6)
+    if (radio == RF09) {
+        uint8_t pll;
+        ret = rf215_blk_read(dev, REG_RF09_PLL, &pll, 1);
+        if (ret) {
+            return ret;
+        }
+        pll = (pll & ~RF215_PLL_LBW_MASK) | FIELD_PREP(RF215_PLL_LBW_MASK, conf->lbw);
+        ret = rf215_blk_write(dev, REG_RF09_PLL, &pll, 1);
+        if (ret) {
+            return ret;
+        }
+    }
+
+    uint32_t base = conf->base_freq;
+    if (radio == RF24) {
+        base -= RF215_RF24_OFFSET_HZ;
+    }
+    base /= RF215_FREQ_STEP_HZ;
+
+    // CS, CCF0L, CCF0H, CNL, CNM are consecutive. CNM applies the others, so it
+    // has to be last (section 6.3.2). All zero in CNM is IEEE mode, channel high bit 0
+    const uint8_t regs[] = { conf->cs / RF215_FREQ_STEP_HZ, base & 0xFF, base >> 8, 0, 0 };
+
+    return rf215_blk_write(dev, (radio == RF09) ? REG_RF09_CS : REG_RF24_CS, regs, sizeof(regs));
+}
+
 static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 			       uint8_t idx)
 {
@@ -489,6 +710,17 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 		return RF215_INVAL_PARAM;
 	}
 
+	/* Configuration has to happen in TRXOFF (section 6.10.4.1) */
+	rf215_state_t state;
+	int ret = rf215_state_get(dev, &state, radio);
+
+	if (ret < 0) {
+		return ret;
+	}
+	if (state != STATE_RF_TRXOFF) {
+		return RF215_INVAL_CONF;
+	}
+
 	const struct rf215_bb_conf *bb = &cfg->presets[idx];
 	const struct rf215_mrfsk_conf *fsk = &bb->fsk;
 
@@ -499,6 +731,10 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 		(radio == RF09) ? REG_BBC0_FSKRRXFLL : REG_BBC1_FSKRRXFLL;
 	const uint16_t reg_fskdm =
 		(radio == RF09) ? REG_BBC0_FSKDM : REG_BBC1_FSKDM;
+	const uint16_t reg_rxbwc =
+		(radio == RF09) ? REG_RF09_RXBWC : REG_RF24_RXBWC;
+	const uint16_t reg_txcutc =
+		(radio == RF09) ? REG_RF09_TXCUTC : REG_RF24_TXCUTC;
 
     // byte packing the parameters into the registers
 
@@ -543,7 +779,7 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 		(fsk->preemphasis_taps >> 16) & 0xFF,
 	};
 
-	int ret = rf215_blk_write(dev, reg_pc, &pc, 1);
+	ret = rf215_blk_write(dev, reg_pc, &pc, 1);
 	if (ret < 0) {
 		return ret;
 	}
@@ -563,90 +799,142 @@ static int rf215_select_preset(const struct device *dev, rf215_radio_t radio,
 		return ret;
 	}
 
+	const struct rf215_fe_conf *fe = &bb->fe[radio];
+
+	/* RXBWC, RXDFE, AGCC, AGCS are consecutive. Keep their bits the preset doesn't set */
+	uint8_t rx_fe[4];
+
+	ret = rf215_blk_read(dev, reg_rxbwc, rx_fe, sizeof(rx_fe));
+	if (ret < 0) {
+		return ret;
+	}
+	rx_fe[0] = (rx_fe[0] & ~0x1F) | ((fe->rx_ifs & 0x1) << 4) | (fe->rx_bw & 0xF);
+	rx_fe[1] = ((fe->rx_rcut & 0x7) << 5) | (fe->rx_sr & 0xF);
+	rx_fe[2] = (rx_fe[2] & ~0x30) | ((fe->agc_avgs & 0x3) << 4);
+	rx_fe[3] = (rx_fe[3] & ~0xE0) | ((fe->agc_tgt & 0x7) << 5);
+
+	ret = rf215_blk_write(dev, reg_rxbwc, rx_fe, sizeof(rx_fe));
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* TXCUTC, TXDFE are consecutive. FSKDM.EN needs TXDFE.DM as well (section 6.10.4.2) */
+	const uint8_t tx_fe[2] = {
+		((fe->paramp & 0x3) << 6) | (fe->lpfcut & 0xF),
+		((fe->tx_rcut & 0x7) << 5) | ((fsk->dm & 0x1) << 4) | (fe->tx_sr & 0xF),
+	};
+
+	ret = rf215_blk_write(dev, reg_txcutc, tx_fe, sizeof(tx_fe));
+	if (ret < 0) {
+		return ret;
+	}
+
 	data->preset = bb;
 	data->preset_idx = idx;
 	return RF215_OK;
 }
 
+/**
+ * @brief Move a radio to a channel of the base frequency and spacing it holds.
+ *
+ * The radio has to be in TRXOFF or TXPREP (section 6.3.2). radio_conf only takes
+ * IEEE mode, so that's the mode this writes. Keeping inside a regulatory band is
+ * the application's job: this only protects the chip, which doesn't protect itself.
+ *
+ * @param dev   the device handle
+ * @param radio the RF frontend (RF09 or RF24)
+ * @param ch    the 9-bit channel number
+ * @return RF215_OK on success, RF215_INVAL_PARAM if the channel is over 9 bits or its
+ *         frequency leaves the chip's band or the base frequency's range,
+ *         RF215_INVAL_CONF in any other state, or a negative error code from the SPI layer
+ */
 static int rf215_set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch)
 {
-      int ret = radio_ready(h, radio);
-  if (ret) {
-    return ret;
+  if (radio != RF09 && radio != RF24) {
+    return RF215_INVAL_PARAM;
   }
-  if (channel > 0x1F) {
-    return -RF215_INVAL_PARAM;
-  }
-  /* The radio should be in IEEE channel mode to set a channel 
-   * since we dont have preset that are not in IEEE mode we can skip this?
-  if (h->priv.radios[radio].cm != AT86RF215_CM_IEEE) {
-    return -RF215_INVAL_CONF;
-  }*/
-  if (radio == RF09) {
-    ret = rf215_blk_write(dev, REG_RF09_CNL, channel & 0xFF, 1);
-    if (ret) {
-      return ret;
-    }
-    ret = rf215_blk_write(
-        dev, REG_RF09_CNM ,(0 << 6) | ((channel >> 8) & 0x1), 1);
-    if (ret) {
-      return ret;
-    }
-  } else {
-    ret = rf215_blk_write(dev, REG_RF24_CNL, channel & 0xFF, 1);
-    if (ret) {
-      return ret;
-    }
-    ret = rf215_blk_write(
-        dev, REG_RF24_CNM ,(0 << 6) | ((channel >> 8) & 0x1), 1);
-    if (ret) {
-      return ret;
-    }
-  }
-  return RF215_OK;
-}
-static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, int8_t dbm)
-{
-      int ret = supports_rf(h, radio);
-  if (ret) {
-    return ret;
-  }
-  switch (pacur) {
-  case RF215_PACUR_22mA_RED:
-  case RF215_PACUR_18mA_RED:
-  case RF215_PACUR_11mA_RED:
-  case RF215_PACUR_NO_RED:
-    break;
-  default:
-    return -RF215_INVAL_PARAM;
-  }
-  if (power > 31) {
-    power = 31;
+  if (ch > RF215_CN_MAX) {
+    return RF215_INVAL_PARAM;
   }
 
-  uint16_t reg = 0x0;
-  if (radio == RF09) {
-    reg = REG_RF09_PAC;
-  } else {
-    reg = REG_RF24_PAC;
+  rf215_state_t state;
+  int ret = rf215_state_get(dev, &state, radio);
+  if (ret) {
+    return ret;
   }
-  return rf215_blk_write(dev, reg, (pacur << 5) | power, 1);
+  if (state != STATE_RF_TRXOFF && state != STATE_RF_TXPREP) {
+    return RF215_INVAL_CONF;
+  }
+
+  // CS, CCF0L, CCF0H are consecutive
+  uint8_t regs[3];
+  ret = rf215_blk_read(dev, (radio == RF09) ? REG_RF09_CS : REG_RF24_CS, regs, sizeof(regs));
+  if (ret) {
+    return ret;
+  }
+
+  // 64 bits: maximum CCF0, CN and CS would pass 4 GHz
+  uint64_t base = (uint64_t)((regs[2] << 8) | regs[1]) * RF215_FREQ_STEP_HZ;
+  if (radio == RF24) {
+    base += RF215_RF24_OFFSET_HZ;
+  }
+  const uint64_t freq = base + (uint64_t)ch * regs[0] * RF215_FREQ_STEP_HZ;
+
+  // TXPREP can't change range (section 6.3.2), so refuse that in TRXOFF as well
+  if (!rf215_freq_valid(radio, freq) ||
+      (freq <= RF215_RF09_LOW_MAX_HZ) != (base <= RF215_RF09_LOW_MAX_HZ)) {
+    return RF215_INVAL_PARAM;
+  }
+
+  const uint16_t reg_cnl = (radio == RF09) ? REG_RF09_CNL : REG_RF24_CNL;
+  const uint16_t reg_cnm = (radio == RF09) ? REG_RF09_CNM : REG_RF24_CNM;
+  uint8_t cnl = ch & 0xFF;
+  uint8_t cnm = (RF215_CM_IEEE << 6) | ((ch >> 8) & 0x1);
+
+  ret = rf215_blk_write(dev, reg_cnl, &cnl, 1);
+  if (ret) {
+    return ret;
+  }
+  return rf215_blk_write(dev, reg_cnm, &cnm, 1);
 }
+
+static int rf215_set_tx_power(const struct device *dev, rf215_radio_t radio, uint8_t txpwr)
+{
+  if (radio != RF09 && radio != RF24) {
+    return RF215_INVAL_PARAM;
+  }
+  if (txpwr > 31) {
+    txpwr = 31;
+  }
+
+  const uint16_t reg = (radio == RF09) ? REG_RF09_PAC : REG_RF24_PAC;
+  uint8_t val = (RF215_PACUR_NO_RED << 5) | txpwr;
+
+  return rf215_blk_write(dev, reg, &val, 1);
+}
+
 static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_t en)
 {
-  uint16_t reg = 0;
-  if (radio == AT86RF215_RF09) {
-    reg = REG_BBC0_PC;
-  } else {
-    reg = REG_BBC1_PC;
+  if (radio != RF09 && radio != RF24) {
+    return RF215_INVAL_PARAM;
   }
-  ret = rf215_blk_write(dev, reg, val, 1);
+
+  const uint16_t reg = (radio == RF09) ? REG_BBC0_PC : REG_BBC1_PC;
+  uint8_t val = 0;
+
+  /* BBEN is bit 2 of BBCn_PC, keep the rest of the register as the preset set it */
+  int ret = rf215_blk_read(dev, reg, &val, 1);
   if (ret) {
     return ret;
   }
-  return RF215_OK;
-
+  if (en) {
+    val |= BIT(2);
+  } else {
+    val &= ~BIT(2);
+  }
+  return rf215_blk_write(dev, reg, &val, 1);
 }
+
 //------------------------------------------------------------------------------
 // End of definition of parametrization functions
 //------------------------------------------------------------------------------
@@ -675,7 +963,7 @@ static int rf215_bb_enable(const struct device *dev, rf215_radio_t radio, uint8_
 static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio,
                            const uint8_t *psdu, size_t len)
 {
-    if (!dev || !psdu || len == 0 || len > RF215_MAX_PDU ||
+    if (!dev || !psdu || len == 0 || len > AT86RF215_MAX_PDU ||
         (radio != RF09 && radio != RF24)) {
         return RF215_INVAL_PARAM;
     }
@@ -719,7 +1007,7 @@ static int rf215_tx_buffer(const struct device *dev, rf215_radio_t radio,
 static int rf215_tx(const struct device *dev, rf215_radio_t radio,
                     const uint8_t *psdu, size_t len, size_t timeout_ms)
 {
-    if (!dev || !psdu || len == 0 || len > RF215_MAX_PDU ||
+    if (!dev || !psdu || len == 0 || len > AT86RF215_MAX_PDU ||
         (radio != RF09 && radio != RF24)) {
         return RF215_INVAL_PARAM;
     }
@@ -900,8 +1188,10 @@ static int rf215_rx_frame(const struct device *dev, rf215_radio_t radio,
 static const struct rf215_api rf215_api_funcs = {
     .conn_check = rf215_conn_check,
     .set_sleep = rf215_set_sleep,
+    .radio_conf = rf215_radio_conf,
     .select_preset = rf215_select_preset,
     .set_channel = rf215_set_channel,
+    .get_pll_ls = rf215_get_pll_ls,
     .set_tx_power = rf215_set_tx_power,
     .bb_enable = rf215_bb_enable,
     .get_value = rf215_get_value,
@@ -915,28 +1205,28 @@ static const struct rf215_api rf215_api_funcs = {
 
 //Expansion macro to define driver instance
 #define RF215_DEFINE(inst)							\
+    static struct rf215_data rf215_data_##inst;					\
     /*Create an instance of the config struct, populate with DT values */	\
     static const struct rf215_config rf215_config_##inst = {			\
-	.rf215_spi = SPI_DT_SPEC_GET(						\
-		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), 			\
-		    (SPI_WORD_SET(8) | SPI_TRANSFER_MSB))),			\
-	.rf215_rst = GPIO_DT_SPEC_GET(						\
-		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), reset_gpios)),	\
-	.rf215_irq = GPIO_DT_SPEC_GET(						\
-		DT_PHANDLE(DT_INST(inst, atmel_at86rf215), irq_gpios)),		\
+	.rf215_spi = SPI_DT_SPEC_INST_GET(inst,					\
+			SPI_WORD_SET(8) | SPI_TRANSFER_MSB),			\
+	.rf215_rst = GPIO_DT_SPEC_INST_GET(inst, reset_gpios),			\
+	.rf215_irq = GPIO_DT_SPEC_INST_GET(inst, irq_gpios),			\
 	.presets = rf215_fsk_presets,						\
 	.num_presets = RF215_NUM_PRESETS,					\
-	.id = inst								\
+	.id = inst,								\
+	.rf09_base_freq_hz = DT_INST_PROP(inst, rf09_base_freq_hz),		\
+	.rf09_channel_spacing_hz = DT_INST_PROP(inst, rf09_channel_spacing_hz),	\
     };										\
     /* Create a "device" instance from a Devicetree node identifier and */ 	\
     /* registers the init function to run during boot. */ 			\
-    DEVICE_DT_DEFINE(inst,							\
+    DEVICE_DT_INST_DEFINE(inst,							\
 		     rf215_init,						\
 		     NULL,							\
-		     &rf215_data,						\
+		     &rf215_data_##inst,					\
 		     &rf215_config_##inst,					\
 		     POST_KERNEL,						\
-		     CONFIG_GPIO_INIT_PRIORITY,					\
-		     &rf215_api_funcs);						\
+		     CONFIG_IEEE802154_AT86RF215_INIT_PRIORITY,			\
+		     &rf215_api_funcs);
 
 DT_INST_FOREACH_STATUS_OKAY(RF215_DEFINE)

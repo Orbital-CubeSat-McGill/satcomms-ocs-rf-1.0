@@ -10,13 +10,13 @@ ensure compatibility and differences.
 |---------------------------|---------------------|------------------------------|--------------|--------------------|
 | LED (Nano user LED)       | PB10                | N/a                          | Yes          | Yes                |
 | Switch (Nano user button) | PB11                | N/a                          | Yes          | Yes                |
-| Radio SPI MISO            | PA19 (SERCOM1 PAD3) | AT86RF215 MISO               | Yes          | No                 |
-| Radio SPI SS              | PA18 (SERCOM1 PAD2) | AT86RF215 SELN               | Yes          | No                 |
-| Radio SPI SCK             | PA17 (SERCOM1 PAD1) | AT86RF215 SCLK               | Yes          | No                 |
-| Radio SPI MOSI            | PA16 (SERCOM1 PAD0) | AT86RF215 MOSI               | Yes          | No                 |
-| Radio reset               | PA01                | AT86RF215 RSTN (active low)  | Yes          | No                 |
+| Radio SPI MOSI            | PA19 (SERCOM1 PAD3) | AT86RF215 MOSI               | Yes          | Yes                |
+| Radio SPI SS              | PA18 (SERCOM1 PAD2) | AT86RF215 SELN               | Yes          | Yes                |
+| Radio SPI SCK             | PA17 (SERCOM1 PAD1) | AT86RF215 SCLK               | Yes          | Yes                |
+| Radio SPI MISO            | PA16 (SERCOM1 PAD0) | AT86RF215 MISO               | Yes          | Yes                |
+| Radio reset               | PA14                | AT86RF215 RSTN (active low)  | Yes          | Yes                |
 | Radio IRQ                 | PA20                | AT86RF215 IRQ                | Yes          | No                 |
-| Radio clock out           | PA23                | AT86RF215 CLKO               | No           | No                 |
+| Radio clock out           | PB23                | AT86RF215 CLKO               | No           | Yes                |
 | CAN SPI MISO              | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-MISO | No           | No                 |
 | CAN SPI MOSI              | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-MOSI | No           | No                 |
 | CAN SPI SCK               | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-SCL  | No           | No                 |

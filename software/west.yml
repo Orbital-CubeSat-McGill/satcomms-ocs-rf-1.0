@@ -6,8 +6,12 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: v3.5.0  # Lock to a specific Zephyr release or commit
-      import: true      # Automatically pull in Zephyr's required dependencies (like HALs)
+      revision: v4.4.0  # Lock to a specific Zephyr release or commit. Keep in sync with flake.nix
+      import:           # Only pull in the dependencies the SAMD21 needs
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_atmel
 
   self:
-    path: satcomms-ocs-rf-1.0/software
+    path: software

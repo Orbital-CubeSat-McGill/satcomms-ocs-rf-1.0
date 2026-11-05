@@ -3,6 +3,8 @@
 
 #include <errno.h>
 
+#include "rf215.h"
+
 
 #define RADIO_NODE DT_NODELABEL(at86rf215)
 
@@ -33,39 +35,6 @@ typedef enum {
 
 
 // TODO BBC0 and BBC1 status byte bits
-
-
-//Initialization of module
-
-static void rf215_irq_isr(  const struct device *port,
-                            struct gpio_callback *cb, 
-                            uint32_t pins);
-static int rf215_init(const struct device *dev);
-static int rf215_reset(const struct device *dev);
-
-//General purpose functions
-static int rf215_get_state(const struct device *dev, uint8_t *state, rf215_radio_t radio); //determine state of transceiver
-
-static int rf215_get_pll_ls(const struct device *dev, uint8_t *state, rf215_radio_t radio); //determine if the pll is operational or locked
-
-//Abstraction layer over SPI driver 
-int rf215_blk_write(
-	const struct device *dev,
-	uint16_t address,
-	const uint8_t *data,
-	size_t length
-);
-int rf215_blk_read(
-	const struct device *dev,
-	uint16_t address,
-	uint8_t *data,
-	size_t length
-);
-int rf215_cmd(
-        const struct device *dev,
-        rf_cmd_t cmd, 
-        rf215_radio_t radio
-);
 
 
 //Enums from libre space project
@@ -102,15 +71,6 @@ typedef enum
   RF215IQ = 0x35, //!< I/Q radio
   RF215M  = 0x36  //!< Sub-1GHz Transceiver and I/Q radio
 } at86rf215_family_t;
-
-/**
- * Radio front-end
- */
-typedef enum
-{
-  RF09 = 0, //!< Sub-1 GHz radio
-  RF24 = 1, //!< 2.4 GHz radio
-} rf215_radio_t;
 
 //Mostly configuration enums here
 
@@ -283,30 +243,6 @@ typedef enum
 } rf215_pacur_t;
 
 /**
- * Channel mode configuration
- */
-typedef enum
-{
-  RF215_CM_IEEE = 0, //!< IEEE compliant
-  RF215_CM_FINE_RES_04 =
-  1, //!< Fine resolution (389.5-510.0)MHz with 99.182Hz channel stepping
-  RF215_CM_FINE_RES_09 =
-  2, //!< Fine resolution (779-1020)MHz with 198.364Hz channel stepping
-  RF215_CM_FINE_RES_24 =
-  3 //!< Fine resolution (2400-2483.5)MHz with 396.728Hz channel stepping
-} rf215_cm_t;
-
-/**
- * PLL loop bandwidth setting
- */
-typedef enum
-{
-  RF215_PLL_LBW_DEFAULT = 0, //!< Default
-  RF215_PLL_LBW_SMALLER = 1, //!< 15% smaller PLL loop bandwidth
-  RF215_PLL_LBW_LARGER  = 2  //!< 15% larger PLL loop bandwidth
-} rf215_pll_lbw_t;
-
-/**
  * PLL lock status
  */
 typedef enum
@@ -348,130 +284,6 @@ typedef enum
   RF215_LVDS_CMV250 = 2, //!< 250 mV
   RF215_LVDS_CMV300 = 3, //!< 300 mV
 } rf215_lvds_cmv_t;
-
-struct rf215_radio_conf
-{
-  at86rf215_cm_t      cm;
-  uint32_t            cs;
-  uint32_t            base_freq;
-  at86rf215_pll_lbw_t lbw;
-};
-
-/**
- * Physical layer type of the baseband core
- */
-typedef enum
-{
-  RF215_BB_PHYOFF  = 0, //!< BB core is OFF
-  RF215_BB_MRFSK   = 1, //!< MR-FSK
-  RF215_BB_MROFDM  = 2, //!< MR-OFDM
-  RF215_BB_MROQPSK = 3  //!< MR-OQPSK
-} rf215_phy_t;
-
-/**
- * FCS type
- */
-typedef enum
-{
-  RF215_FCS_16 = 0, //!< 16-bit
-  RF215_FCS_32 = 1  //!< 32-bit
-} rf215_fcs_t;
-
-/**
- * FSK 3-dB bandwidth of the shaping filter
- */
-typedef enum
-{
-  RF215_FSK_BT_05 = 0, //!< BT = 0.5
-  RF215_FSK_BT_10 = 1, //!< BT = 1.0
-  RF215_FSK_BT_15 = 2, //!< BT = 1.5
-  RF215_FSK_BT_20 = 3, //!< BT = 2.0
-} rf215_fsk_bt_t;
-
-/**
- * Scaling factor with regard to the modulation index.
- * The effectively applied modulation index results in the modulation index
- * configured with MIDX times the scaling factor.
- */
-typedef enum
-{
-  RF215_MIDXS_78  = 0, //!< s = 1.0 - 1/8 (7/8)
-  RF215_MIDXS_88  = 1, //!< s = 1.0 (8/8)
-  RF215_MIDXS_98  = 2, //!< s = 1.0 + 1/8 (9/8)
-  RF215_MIDXS_108 = 3, //!< s = 1.0 + 1/4 (10/8)
-} rf215_fsk_midxs_t;
-
-/**
- * Modulation index
- */
-typedef enum
-{
-  RF215_MIDX_0 = 0, //!< Modulation index = 0.375
-  RF215_MIDX_1 = 1, //!< Modulation index = 0.5
-  RF215_MIDX_2 = 2, //!< Modulation index = 0.75
-  RF215_MIDX_3 = 3, //!< Modulation index = 1.0
-  RF215_MIDX_4 = 4, //!< Modulation index = 1.25
-  RF215_MIDX_5 = 5, //!< Modulation index = 1.5
-  RF215_MIDX_6 = 6, //!< Modulation index = 1.75
-  RF215_MIDX_7 = 7, //!< Modulation index = 2.0
-} rf215_fsk_midx_t;
-
-/**
- * FSK type
- */
-typedef enum
-{
-  RF215_2FSK = 0, //!< 2-FSK
-  RF215_4FSK = 1  //!< 4-FSK
-} rf215_fsk_t;
-
-/**
- * FSK symbol rates
- */
-typedef enum
-{
-  RF215_FSK_SRATE_50  = 0, //!< 50 kHz
-  RF215_FSK_SRATE_100 = 1, //!< 100 kHz
-  RF215_FSK_SRATE_150 = 2, //!< 150 kHz
-  RF215_FSK_SRATE_200 = 3, //!< 200 kHz
-  RF215_FSK_SRATE_300 = 4, //!< 300 kHz
-  RF215_FSK_SRATE_400 = 5  //!< 400 kHz
-} rf215_fsk_srate_t;
-
-/**
- * Receiver override setting.
- * If Receiver Override is enabled during frame reception,
- * the FSK receiver restarts synchronization after a rapid input signal
- * increase. The minimum input signal level is -110dBm.
- */
-typedef enum
-{
-  RF215_FSK_RXO_6DB  = 0,    //!< Receiver restarted by >6dB stronger frame
-  RF215_FSK_RXO_12DB = 1,    //!< Receiver restarted by >12dB stronger frame
-  RF215_FSK_RXO_18DB = 2,    //!< Receiver restarted by >18dB stronger frame
-  RF215_FSK_RXO_DISABLED = 3 //!< Receiver override disabled
-} rf215_fsk_rxo_t;
-
-/**
- * FSK FEC Scheme
- */
-typedef enum
-{
-  RF215_FSK_FEC_NRNSC =
-      0, //!< non-recursive and non-systematic convolutional cod
-  RF215_FSK_FEC_RSC = 1 //!< recursive and systematic convolutional code
-} rf215_fsk_fecs_t;
-
-/**
- * SFD condifuration
- */
-typedef enum
-{
-  RF215_SFD_UNCODED_IEEE = 0, //!< Uncoded IEEE mode
-  RF215_SFD_UNCODED_RAW  = 1, //!< Uncoded RAW mode
-  RF215_SFD_CODED_IEEE   = 2, //!< Coded IEEE mode
-  RF215_SFD_CODED_RAW    = 3, //!< Coded RAW mode
-} rf215_sfd_mode_t;
 
 /**
  * The AGC target level relative to ADC full scale
@@ -523,11 +335,51 @@ typedef enum
   RF215_PAVC_2_4V = 2  //!< 2.4V
 } rf215_pavc_t;
 
-//useful for logging and evaluting link resiliance
-typedef enum
-{
-    RSSI, 
-    EDV,
-    AGC,
-} get_variables;
+struct rf215_config {
+    struct spi_dt_spec rf215_spi;
+    struct gpio_dt_spec rf215_rst;
+    struct gpio_dt_spec rf215_irq;
+    const struct rf215_bb_conf *presets;
+    uint8_t num_presets;
+    uint8_t preset_idx;
+    uint8_t id;
+    uint32_t rf09_base_freq_hz;
+    uint32_t rf09_channel_spacing_hz;
+};
+
+// Set struct for chip irq triggers and lock spi access
+struct rf215_data {
+    const struct device *dev;
+    const struct rf215_bb_conf *preset;
+    struct gpio_callback irq_cb;
+    struct k_work irq_work;
+    struct k_mutex bus_lock;   /* if other threads also touch the chip */
+    struct k_event events;
+    rf215_chpm_t op_mode;
+    uint8_t version;        /* RF_VN, read at init */
+    uint8_t num_presets;
+    uint8_t  preset_idx;    /* which preset is active */
+    uint16_t channel;       /* runtime */
+    int8_t   tx_power;      /* runtime */
+};
+
+//Abstraction layer over SPI driver 
+int rf215_blk_write(
+	const struct device *dev,
+	uint16_t address,
+	const uint8_t *data,
+	size_t length
+);
+int rf215_blk_read(
+	const struct device *dev,
+	uint16_t address,
+	uint8_t *data,
+	size_t length
+);
+int rf215_cmd(
+        const struct device *dev,
+        rf_cmd_t cmd, 
+        rf215_radio_t radio
+);
+
 #endif /*ZEPHYR_DRIVERS_RF215_INTERNAL_H*/

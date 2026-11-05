@@ -1,9 +1,11 @@
 #include "errno.h"
 #include "rf215.h"
 #include "rf215_internal.h"
+#include "rf215_regs.h"
 
-#define RF215_MODE_READ     0xBF
-#define RF215_MODE_WRITE    0xBF
+// Top two bits of the 16-bit SPI command: 00 = read, 10 = write
+#define RF215_MODE_READ     0x00
+#define RF215_MODE_WRITE    0x80
 #define RF215_ADDR_MAX      0x3FFE
 
 int rf215_blk_write(
@@ -19,7 +21,7 @@ int rf215_blk_write(
         return -EINVAL;
     }
 
-    uint8_t hdr[2] = {RF215_MODE_WRITE & (address >> 8), address & 0xFF};
+    uint8_t hdr[2] = {RF215_MODE_WRITE | (address >> 8), address & 0xFF};
 
     const struct spi_buf tx_bufs[] = {
         { .buf = hdr, .len = sizeof(hdr)},
@@ -107,7 +109,8 @@ int rf215_cmd(const struct device *dev, rf_cmd_t cmd, rf215_radio_t radio)
         default:
             return -EINVAL;
     }
-    return rf215_blk_write_8(dev, reg, cmd, 1);
+    uint8_t val = cmd;
+    return rf215_blk_write(dev, reg, &val, 1);
 }
 
 
