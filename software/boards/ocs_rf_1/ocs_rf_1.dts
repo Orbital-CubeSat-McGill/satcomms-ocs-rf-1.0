@@ -68,8 +68,9 @@
 &sercom1 {
 	status = "okay";
 	compatible = "atmel,sam0-spi";
-	dipo = <3>; // MISO
-	dopo = <0>; // MOSI
+	// The hat crosses these lines: PA16 goes to the radio's MISO, PA19 to its MOSI
+	dipo = <0>; // MISO: PA16, SERCOM1 PAD0
+	dopo = <2>; // MOSI: PA19 PAD3, SCK: PA17 PAD1
 	#address-cells = <1>;
 	#size-cells = <0>;
 	cs-gpios = <&porta 18 GPIO_ACTIVE_LOW>;
@@ -83,7 +84,7 @@
 
 			// AT86RF215 IRQ pin is active high after reset (datasheet 4.3, RF_CFG.IRQP). Update this flag if the driver changes IRQP.
 			irq-gpios = <&porta 20 GPIO_ACTIVE_HIGH>;
-			reset-gpios = <&porta 1 GPIO_ACTIVE_LOW>;
+			reset-gpios = <&porta 14 GPIO_ACTIVE_LOW>; // hat J2.23 is Nano pin 26, PA14 (the schematic labels it PA01)
 		};
 };
 

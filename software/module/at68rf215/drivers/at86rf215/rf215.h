@@ -5,50 +5,36 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/kernel.h>
 
+/**
+ * Radio front-end
+ */
+typedef enum
+{
+  RF09 = 0, //!< Sub-1 GHz radio
+  RF24 = 1, //!< 2.4 GHz radio
+} rf215_radio_t;
+
+// Values that can be read with get_value, useful for logging and evaluating link resilience
+typedef enum
+{
+    RSSI,
+    EDV,
+    AGC,
+} get_variable;
+
 struct rf215_api {
-    int (*conn_check)(const struct device *dev); //confirm at86rf215 is connected and alive
+    int (*conn_check)(const struct device *dev, uint8_t *part); //confirm at86rf215 is connected and alive, part gets the raw part number
     int (*set_sleep)(const struct device *dev, rf215_radio_t radio, uint8_t en); //set sleep state of transceiver or trxoff
     int (*select_preset)(const struct device *dev, rf215_radio_t radio, uint8_t idx); /* validate, lock, apply */
-    int (*set_channel(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
-    int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, int8_t dbm);
+    int (*set_channel)(const struct device *dev, rf215_radio_t radio, uint16_t ch); /* checked against active preset */
+    int (*set_tx_power)(const struct device *dev, rf215_radio_t radio, uint8_t txpwr); /* raw TXPWR register step, 0..31 */
     int (*bb_enable)(const struct device *dev, rf215_radio_t radio, uint8_t en);
-    int (*get_value)(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value) //get a variable from get_values enum to value
+    int (*get_value)(const struct device *dev, rf215_radio_t radio, get_variable var, uint8_t *value); //get a variable from get_variable enum to value
     int (*tx_buffer)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len); // write to tx buffer
     int (*radio_tx)(const struct device *dev, rf215_radio_t radio, const uint8_t *psdu, size_t len, size_t timeout_ms); // flush tx buffer and transmit data
     int (*radio_rx)(const struct device *dev, rf215_radio_t radio, size_t timeout_ms); // set transceiver to RX mode
     int (*rx_frame)(const struct device *dev, rf215_radio_t radio, uint8_t *psdu, size_t len); // get data from RX buffer
 };
-
-struct rf215_config {
-    struct spi_dt_spec rf215_spi;
-    struct gpio_dt_spec rf215_rst;
-    struct gpio_dt_spec rf215_irq;
-    const struct rf215_bb_conf *presets;
-    uint8_t num_presets;
-    uint8_t preset_idx;
-    uint8_t id;
-};
-
-// Set struct for chip irq triggers and lock spi access
-struct rf215_data {
-    const struct device *dev;
-    const struct rf215_bb_conf *preset;
-    struct gpio_callback irq_cb;
-    struct k_work irq_work;
-    struct k_mutex bus_lock;   /* if other threads also touch the chip */
-    struct k_event events;
-    rf215_chpm_t op_mode;
-    uint8_t num_presets;
-    uint8_t  preset_idx;    /* which preset is active */
-    uint16_t channel;       /* runtime */
-    int8_t   tx_power;      /* runtime */
-};
-
-// Enums for get functions
-typedef enum
-{
-    something,
-}r215_get;
 
 //------------------------------------------------------------------------------
 // Start of Declaration of radio configuration

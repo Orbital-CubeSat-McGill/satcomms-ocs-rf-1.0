@@ -51,6 +51,12 @@ cmake-build-*/
 *.hex
 *.stat
 
+#West workspace, fetched by west update (anchored so software/zephyr/ stays tracked)
+/.west/
+/zephyr/
+/modules/
+/tools/
+
 #CLION IDE stuff
 .idea/
 .clang-format.bak
