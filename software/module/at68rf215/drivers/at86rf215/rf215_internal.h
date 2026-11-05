@@ -343,6 +343,8 @@ struct rf215_config {
     uint8_t num_presets;
     uint8_t preset_idx;
     uint8_t id;
+    uint32_t rf09_base_freq_hz;
+    uint32_t rf09_channel_spacing_hz;
 };
 
 // Set struct for chip irq triggers and lock spi access
