@@ -14,14 +14,14 @@ ensure compatibility and differences.
 | Radio SPI SS              | PA18 (SERCOM1 PAD2) | AT86RF215 SELN               | Yes          | Yes                |
 | Radio SPI SCK             | PA17 (SERCOM1 PAD1) | AT86RF215 SCLK               | Yes          | Yes                |
 | Radio SPI MISO            | PA16 (SERCOM1 PAD0) | AT86RF215 MISO               | Yes          | Yes                |
-| Radio reset               | PA14                | AT86RF215 RSTN (active low)  | Yes          | Yes                |
+| Radio reset               | PA01                | AT86RF215 RSTN (active low)  | Yes          | Yes                |
 | Radio IRQ                 | PA20                | AT86RF215 IRQ                | Yes          | No                 |
 | Radio clock out           | PB23                | AT86RF215 CLKO               | No           | Yes                |
-| CAN SPI MISO              | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-MISO | No           | No                 |
-| CAN SPI MOSI              | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-MOSI | No           | No                 |
-| CAN SPI SCK               | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-SCL  | No           | No                 |
-| CAN SPI CS                | TBD (SERCOM0 PAD?)  | CAN controller, net CAN-CS   | No           | No                 |
-| CAN standby               | PA14                | CAN controller, net CAN-STBY | No           | No                 |
-| CAN interrupt             | PA15                | CAN controller, net CAN-INT  | No           | No                 |
+| CAN SPI MISO              | PA05 (SERCOM0 PAD1) | CAN controller, net CAN-MISO | Yes          | No                 |
+| CAN SPI MOSI              | PA11 (SERCOM0 PAD3) | CAN controller, net CAN-MOSI | Yes          | No                 |
+| CAN SPI SCK               | PA10 (SERCOM0 PAD2) | CAN controller, net CAN-SCL  | Yes          | No                 |
+| CAN SPI CS                | PA04 (SERCOM0 CS)   | CAN controller, net CAN-CS   | Yes          | No                 |
+| CAN standby               | PA14                | CAN controller, net CAN-STBY | Yes          | No                 |
+| CAN interrupt             | PA15                | CAN controller, net CAN-INT  | Yes          | No                 |
 | CAN interrupt 0           | PA24                | CAN controller, net CAN-INT0 | No           | No                 |
 | CAN interrupt 1           | PA25                | CAN controller, net CAN-INT1 | No           | No                 |              
