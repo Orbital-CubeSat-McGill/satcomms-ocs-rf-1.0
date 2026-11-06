@@ -32,15 +32,9 @@ int main(void)
 	struct can_frame frame = {
 		.id = 0x123,
 		.dlc = 8,
-		.flags = CAN_FRAME_FDF | CAN_FRAME_BRS,
+		.flags = 0,
 		.data = {0}
 	};
-
-	ret = can_set_mode(can_dev, CAN_MODE_FD);
-	if (ret != 0) {
-		printk("Failed to set CAN FD mode: %d\n", ret);
-		return ret;
-	}
 
 	ret = can_start(can_dev);
 	if (ret != 0) {
