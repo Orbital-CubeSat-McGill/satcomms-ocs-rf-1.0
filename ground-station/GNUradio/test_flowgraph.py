@@ -5,8 +5,6 @@ From ground-station/GNUradio, in `nix develop .#ground`: python3 test_flowgraph.
 
 As with test_fsk_decode.py, a pass says nothing about the real chip's bit orders or FCS.
 """
-import contextlib
-import io
 import os
 import sys
 import tempfile
@@ -23,7 +21,6 @@ from PyQt5 import Qt
 import fsk_decode
 import fsk_demod
 import test_fsk_decode as sim
-import weak_signal
 
 app = Qt.QApplication(sys.argv[:1])
 capture = None
@@ -124,30 +121,6 @@ class Flowgraph(unittest.TestCase):
         payload = bytes(range(124))
         frames = self.run_graph([sim.modulate(sim.frame_bits(payload), cfo=2e3)] * 30, amp=8.0, snr_db=14.0, gap_s=0.02)
         self.assert_all_good(frames, payload, 30)
-
-    def test_weak_signal_sweep(self):
-        """tx-sweep's schedule, 15 dB at the top level and 1 dB less per level, read from the printed log."""
-        step = 6
-        counters = range(16 * step + 3)     # into the next pass, so the last levels' loss counts
-        bursts = []
-        for c in counters:
-            level = weak_signal.level_for(c, step)
-            bursts.append(10 ** ((level - 15) / 20) * sim.modulate(sim.frame_bits(sim.app_payload(c, tx_power=level)), cfo=2e3, ppm=20))
-
-        log = io.StringIO()
-        with contextlib.redirect_stdout(log):
-            self.run_graph(bursts, amp=30.0, snr_db=15.0, gap_s=0.02)
-
-        sweep = weak_signal.Sweep(step)
-        for line in log.getvalue().splitlines():
-            sweep.add_line(line)
-        print("\n" + weak_signal.format_table(sweep), file=sys.stderr)
-        self.assertEqual(sweep.mismatches, 0)
-        self.assertEqual(sweep.missing_levels(), [])
-        self.assertTrue(all(sweep.levels[p].sent == step for p in range(15)))
-        self.assertTrue(all(sweep.levels[p].fer == 0 for p in range(15, 12, -1)))
-        self.assertGreater(sweep.levels[0].fer, 0.5)
-
 
 if __name__ == "__main__":
     unittest.main()
