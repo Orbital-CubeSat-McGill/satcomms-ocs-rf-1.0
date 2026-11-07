@@ -1,11 +1,21 @@
 /*
- * Green Bear USB bridge: CDC ACM in → COBS-decode → CRC/length check → radio_tx.
+ * Green Bear bridge: SERCOM5 in → COBS-decode → CRC/length check → radio_tx.
+ *
+ * Input is the console UART (DT_CHOSEN(zephyr_console) = SERCOM5, PB22 RX /
+ * PA22 TX, 115200 8N1), reached through the Curiosity Nano's nEDBG debugger
+ * CDC port. On the BBG that port is /dev/ttyACM0. The Nano's USB jack goes to
+ * the debugger chip, not the target: PA24/PA25 are NOT USB on this board (on
+ * the Green Board they go to the MCP251863 INT pins), so no USB stack here.
+ *
+ * RX is interrupt-driven into a ring buffer. The SERCOM RX FIFO holds 2 bytes
+ * and a byte lands every ~87 us at 115200; polling would drop bytes.
  *
  * Radio path is byte-for-byte the working tx-burst setup (RF24 asleep, RF09,
  * preset 0, TX_POWER 15, TRXOFF after each send).
  *
  * THIS TRANSMITS WHEN A VALID FRAME ARRIVES. Antenna on J3 before power.
- * Console is SERCOM5 115200 8N1. Look for "sent" / drop counters.
+ * printk output goes back out the same port; Green Bear logs it as "rb: ...".
+ * Look for "sent" / drop counters.
  *
  * Protocol: MPM-Ion0-software/docs/greenbear-protocol.md
  */
@@ -15,6 +25,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/crc.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/sys/ring_buffer.h>
 
 #include <string.h>
 
@@ -45,7 +56,11 @@
 #define VERSION          1
 
 static const struct device *const radio = DEVICE_DT_GET(DT_NODELABEL(at86rf215));
-static const struct device *const cdc = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+static const struct device *const uart = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+
+/* ISR → thread hand-off. 2048 covers one max wire frame plus slack. */
+RING_BUF_DECLARE(rx_rb, 2048);
+K_SEM_DEFINE(rx_sem, 0, 1);
 
 static uint8_t accum[ACCUM_MAX];
 static size_t accum_len;
@@ -164,14 +179,35 @@ static void feed_byte(uint8_t b)
 	accum[accum_len++] = b;
 }
 
+/* UART ISR: drain the hardware FIFO into the ring buffer, wake main. */
+static void uart_isr(const struct device *dev, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	if (!uart_irq_update(dev)) {
+		return;
+	}
+	while (uart_irq_rx_ready(dev)) {
+		uint8_t buf[16];
+		int n = uart_fifo_read(dev, buf, sizeof(buf));
+
+		if (n <= 0) {
+			break;
+		}
+		/* If the ring is full the tail is lost; feed_byte resyncs on 0x00. */
+		ring_buf_put(&rx_rb, buf, (uint32_t)n);
+	}
+	k_sem_give(&rx_sem);
+}
+
 int main(void)
 {
 	if (!device_is_ready(radio)) {
 		printk("AT86RF215 not ready\n");
 		return 0;
 	}
-	if (!device_is_ready(cdc)) {
-		printk("CDC ACM not ready\n");
+	if (!device_is_ready(uart)) {
+		printk("console UART not ready\n");
 		return 0;
 	}
 	if (!radio_setup()) {
@@ -179,18 +215,18 @@ int main(void)
 		return 0;
 	}
 
-	printk("usb-bridge ready (cdc=%s)\n", cdc->name);
+	uart_irq_callback_user_data_set(uart, uart_isr, NULL);
+	uart_irq_rx_enable(uart);
+
+	printk("usb-bridge ready (uart=%s)\n", uart->name);
 
 	while (1) {
 		uint8_t b;
-		int got = 0;
 
-		while (uart_poll_in(cdc, &b) == 0) {
+		k_sem_take(&rx_sem, K_FOREVER);
+		/* Drain in thread context; handle_cobs_frame/radio_tx run here. */
+		while (ring_buf_get(&rx_rb, &b, 1) == 1) {
 			feed_byte(b);
-			got = 1;
-		}
-		if (!got) {
-			k_msleep(1);
 		}
 	}
 
