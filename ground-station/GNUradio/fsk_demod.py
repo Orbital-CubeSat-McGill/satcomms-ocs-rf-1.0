@@ -242,7 +242,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decim, firdes.low_pass(1.0, samp_rate, 50e3, 40e3), (-500e3 + offset_hz), samp_rate)
-        self.epy_block_0 = epy_block_0.blk(expect='tx-burst')
+        self.epy_block_0 = epy_block_0.blk(expect='greenbear')
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_ff(
             digital.TED_GARDNER,
             10,

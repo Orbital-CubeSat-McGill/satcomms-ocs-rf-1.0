@@ -19,6 +19,7 @@ from gnuradio import blocks, gr, soapy
 from PyQt5 import Qt
 
 import fsk_demod
+import greenbear_packet as gbp
 import test_fsk_decode as sim
 
 app = Qt.QApplication(sys.argv[:1])
@@ -66,6 +67,7 @@ class Flowgraph(unittest.TestCase):
         tb.start()
         tb.wait()
         self.speed = os.path.getsize(capture) / 2 / (time.monotonic() - start)
+        self.tb = tb
         return tb.epy_block_0.frames
 
     def assert_all_good(self, frames, payload, count):
@@ -108,6 +110,15 @@ class Flowgraph(unittest.TestCase):
         payload = bytes(range(124))
         frames = self.run_graph([sim.modulate(sim.frame_bits(payload), cfo=2e3)] * 30, amp=8.0, snr_db=14.0, gap_s=0.02)
         self.assert_all_good(frames, payload, 30)
+
+    def test_greenbear_packets_are_parsed(self):
+        # Default expect is 'greenbear': the block prints the header and tracks seq.
+        seqs = [10, 11, 12, 15]
+        payloads = [gbp.build(s, 1700000000 + s, bytes(range(60))) for s in seqs]
+        frames = self.run_graph([sim.modulate(sim.frame_bits(p), cfo=1e3) for p in payloads])
+        self.assertEqual(sum(f["fcs_ok"] for f in frames), len(seqs))
+        self.assertEqual([p.seq for p in self.tb.epy_block_0.packets], seqs)
+        self.assertEqual(self.tb.epy_block_0.last_seq, 15)
 
 
 if __name__ == "__main__":

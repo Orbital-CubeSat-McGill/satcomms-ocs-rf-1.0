@@ -45,6 +45,7 @@ fp-info-cache
 
 #Zephyr Build & Output Files
 build/
+build-*/
 cmake-build-*/
 *.elf
 *.bin
