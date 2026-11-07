@@ -26,6 +26,8 @@ import zlib
 
 import numpy as np
 
+import greenbear_packet as gbp
+
 SYMBOL_RATE = 50e3
 DEVIATION = 25e3
 CHANNEL_RATE = 500e3        # exactly 10 samples per symbol
@@ -406,16 +408,23 @@ def main():
     ap.add_argument("--rate", type=float, default=8e6, help="capture sample rate, Hz")
     ap.add_argument("--tune", type=float, default=915.5e6, help="capture centre frequency, Hz")
     ap.add_argument("--freq", type=float, default=915e6, help="signal frequency, Hz")
-    ap.add_argument("--expect", choices=sorted(PATTERNS), help="count bit errors against a known payload")
+    ap.add_argument("--expect", choices=sorted(PATTERNS) + ["greenbear"], help="tx-burst bit-error check, or greenbear header parse")
     ap.add_argument("--fcs-search", action="store_true", help="on a bad FCS, try the CRC-32 variants")
     ap.add_argument("--hex", action="store_true", help="print the first 64 PSDU bytes of each frame")
     args = ap.parse_args()
 
-    pattern = PATTERNS.get(args.expect)
+    pattern = PATTERNS.get(args.expect) if args.expect != "greenbear" else None
     results = decode_capture(args.capture, args.rate, args.tune, args.freq)
 
     for i, r in enumerate(results, 1):
         print(format_frame(i, r, pattern))
+        if args.expect == "greenbear" and "psdu" in r and r.get("fcs_ok"):
+            logical = r["psdu"][:-FCS_LEN]
+            try:
+                pkt = gbp.parse(logical)
+                print(f"      greenbear {gbp.format_header(pkt)}")
+            except ValueError as e:
+                print(f"      greenbear parse: {e}")
         if args.hex and "psdu" in r:
             print(f"      {r['psdu'][:64].hex(' ')}")
         if args.fcs_search and r.get("fcs_ok") is False:

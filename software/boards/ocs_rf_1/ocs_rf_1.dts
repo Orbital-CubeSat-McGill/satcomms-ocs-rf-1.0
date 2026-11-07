@@ -52,6 +52,20 @@
 };
 
 
+
+/* USB CDC ACM transport; debug console remains on SERCOM5. */
+zephyr_udc0: &usb0 {
+	status = "okay";
+
+	pinctrl-0 = <&usb_dc_default>;
+	pinctrl-names = "default";
+
+	greenbear_cdc_acm: greenbear_cdc_acm {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Green Bear CDC ACM";
+	};
+};
+
 //Console
 &sercom5 {
 	status = "okay";
@@ -119,6 +133,13 @@
 };
 
 &pinctrl {
+	usb_dc_default: usb_dc_default {
+		group1 {
+			pinmux = <PA24G_USB_DM>,
+			         <PA25G_USB_DP>;
+		};
+	};
+
 	sercom5_uart_default: sercom5_uart_default {
 		group1 {
 			pinmux = <PA22D_SERCOM5_PAD0>,
