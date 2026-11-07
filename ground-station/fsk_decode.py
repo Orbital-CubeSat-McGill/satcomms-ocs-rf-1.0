@@ -41,6 +41,7 @@ SFD_MAX_ERRORS = 2
 PHR_BITS = 16
 FCS_LEN = 4
 PREAMBLE_HISTORY = 40      # symbols kept before a sync match, to measure the offset
+SNR_CAL_DB = -10.75         # estimate_snr to SNR in 100 kHz, live path, simulated 14-30 dB. It flattens above 30 dB
 
 TIMING_GAIN = 0.03
 BURST_THRESHOLD = 4.0       # power over the noise floor: 6 dB, in the wide filter's band
@@ -49,6 +50,21 @@ BURST_MERGE_S = 1e-3
 BURST_MIN_S = 2e-3
 
 PATTERNS = {"tx-burst": b"OCS-RF-1 TEST BURST 0123456789 "}
+
+# The app's frame: software/app/src/main.c has the layout
+APP_LEN = 128
+APP_VERSION = 1
+APP_CALL_SIGN = 1
+APP_CALL_SIGN_LEN = 10
+APP_COUNTER = 11
+APP_UPTIME = 15
+APP_RESET_CAUSE = 19
+APP_TX_POWER = 20
+APP_TX_ERRORS = 21
+APP_PATTERN = 25
+APP_PATTERN_SEED = 0x6C078965
+APP_SEARCH = 64             # a damaged frame's counter is looked for this far past the last one
+APP_MAX_BER = 0.25          # above this a damaged frame's pattern isn't the one tried. Random is 0.5
 
 
 def lowpass(cutoff, rate, n_taps):
@@ -212,6 +228,113 @@ def measure_deviation(soft):
     return float(np.mean(np.abs(soft[1:-1][settled]))) if settled.any() else float("nan")
 
 
+def estimate_snr(soft):
+    """
+    SNR in dB, from how far settled symbols scatter around their two levels, so it needs
+    no power reading and ignores any offset. See SNR_CAL_DB for what it's tied to.
+    """
+    signs = soft > 0
+    settled = (signs[1:-1] == signs[:-2]) & (signs[1:-1] == signs[2:])
+    high, low = soft[1:-1][settled & signs[1:-1]], soft[1:-1][settled & ~signs[1:-1]]
+    if len(high) < 2 or len(low) < 2:
+        return None
+    level = (high.mean() - low.mean()) / 2
+    spread = (np.sum((high - high.mean()) ** 2) + np.sum((low - low.mean()) ** 2)) / (len(high) + len(low))
+    return float(10 * np.log10(level ** 2 / spread) + SNR_CAL_DB) if spread > 0 else None
+
+
+def app_pattern(counter):
+    """The app's fill_pattern: xorshift32, low byte of each step."""
+    x = (counter ^ APP_PATTERN_SEED) & 0xFFFFFFFF
+    out = bytearray(APP_LEN - FCS_LEN - APP_PATTERN)
+    for i in range(len(out)):
+        x ^= (x << 13) & 0xFFFFFFFF
+        x ^= x >> 17
+        x ^= (x << 5) & 0xFFFFFFFF
+        out[i] = x & 0xFF
+    return bytes(out)
+
+
+def parse_app_frame(psdu):
+    """The fields of the app's frame. Only worth trusting if the FCS passed."""
+    return {
+        "version": psdu[0],
+        "call": psdu[APP_CALL_SIGN:APP_CALL_SIGN + APP_CALL_SIGN_LEN].decode("ascii", "replace").strip(),
+        "counter": int.from_bytes(psdu[APP_COUNTER:APP_COUNTER + 4], "little"),
+        "uptime_ms": int.from_bytes(psdu[APP_UPTIME:APP_UPTIME + 4], "little"),
+        "reset_cause": psdu[APP_RESET_CAUSE],
+        "tx_power": psdu[APP_TX_POWER],
+        "tx_errors": int.from_bytes(psdu[APP_TX_ERRORS:APP_TX_ERRORS + 4], "little"),
+    }
+
+
+class AppLink:
+    """
+    Counts lost frames and bit errors from the app's frames, in the order they arrive.
+
+    lost: counter values never heard. bad: heard, with a failed FCS. A valid FCS means no
+    bit errors, so they only come from bad frames. A bad frame's own counter can't be
+    trusted, so its counter is whichever nearby value's pattern fits. If none fits, the
+    frame counts as unidentified, and the next good frame counts it as lost.
+    """
+
+    def __init__(self):
+        self.last = None
+        self.lost = self.bad = self.unidentified = self.reboots = 0
+        self.frames = self.bit_errors = self.bits = 0
+
+    def _identify(self, psdu):
+        payload = psdu[APP_PATTERN:-FCS_LEN]
+        candidates = [parse_app_frame(psdu)["counter"]]
+        if self.last is not None:
+            candidates += [(self.last + i) & 0xFFFFFFFF for i in range(1, APP_SEARCH + 1)]
+        errors, counter = min((count_bit_errors(payload, app_pattern(c))[0], c) for c in candidates)
+        return (counter, errors) if errors <= APP_MAX_BER * 8 * len(payload) else (None, None)
+
+    def update(self, psdu, good):
+        """Returns a dict for an app frame, or None for any other frame."""
+        if len(psdu) != APP_LEN or (good and psdu[0] != APP_VERSION):
+            return None
+
+        if good:
+            fields = parse_app_frame(psdu)
+            counter, errors = fields["counter"], count_bit_errors(psdu[APP_PATTERN:-FCS_LEN], app_pattern(fields["counter"]))[0]
+        else:
+            fields = None
+            counter, errors = self._identify(psdu)
+            if counter is None:
+                self.unidentified += 1
+                return {"good": False, "counter": None, "fields": None, "link": self}
+
+        if self.last is not None and counter <= self.last:
+            self.reboots += 1       # the counter only restarts with the firmware
+        elif self.last is not None:
+            self.lost += counter - self.last - 1
+        self.last = counter
+        self.frames += 1
+        self.bad += not good
+        self.bit_errors += errors
+        self.bits += 8 * (APP_LEN - FCS_LEN - APP_PATTERN)
+        return {"good": good, "counter": counter, "errors": errors, "fields": fields, "link": self}
+
+    def summary(self):
+        ber = f"{self.bit_errors / self.bits:.2e}" if self.bits else "n/a"
+        return (f"frames={self.frames + self.lost} lost={self.lost} bad={self.bad} unidentified={self.unidentified}"
+                f" reboots={self.reboots} bit_err={self.bit_errors}/{self.bits} ber={ber}")
+
+
+def format_app(app):
+    link = app["link"]
+    totals = f"lost={link.lost} bad={link.bad}"
+    if app["counter"] is None:
+        return f"unidentified {totals}"
+    line = f"cnt={app['counter']}"
+    f = app["fields"]
+    if f:
+        line = f"{f['call']} {line} up={f['uptime_ms'] / 1e3:.1f}s rst=0x{f['reset_cause']:02x} pwr={f['tx_power']} txerr={f['tx_errors']}"
+    return f"{line} {totals} bit_err={app['errors']}/{8 * (APP_LEN - FCS_LEN - APP_PATTERN)}"
+
+
 def find_sync(x, offset, cutoff):
     """Removes offset and filters. Returns the signal, frequency, SFD start, polarity and residual offset."""
     t = np.arange(len(x)) / CHANNEL_RATE
@@ -362,6 +485,7 @@ class FrameSync:
                     "sync_errors": errors,
                     "offset": self._offset(start),
                     "deviation": measure_deviation(soft[PHR_BITS:wanted] * DEVIATION),
+                    "snr": estimate_snr(soft[PHR_BITS:wanted]),
                 })
 
         self.pending = waiting
@@ -381,7 +505,7 @@ def decode_capture(path, rate=8e6, tune=915.5e6, freq=915e6):
     return [decode_burst(z, s, e, noise) for s, e in bursts]
 
 
-def format_frame(i, r, pattern):
+def format_frame(i, r, pattern, app=None):
     line = f"[{i:3}] t={r['t']:8.3f}s dur={r['dur'] * 1e3:6.1f}ms {r['status']:9}"
     if r["status"] == "no-sync":
         return line
@@ -391,6 +515,8 @@ def format_frame(i, r, pattern):
     line += f" len={r['phr']['len']}"
     if "fcs_ok" in r:
         line += f" fcs={'ok ' if r['fcs_ok'] else 'BAD'} dev={r['deviation'] / 1e3:4.1f}kHz"
+        if app:
+            return f"{line} {format_app(app)}"
         if pattern:
             errors, total = count_bit_errors(r["psdu"][:-FCS_LEN], pattern)
             line += f" bit_err={errors}/{total}"
@@ -413,9 +539,11 @@ def main():
 
     pattern = PATTERNS.get(args.expect)
     results = decode_capture(args.capture, args.rate, args.tune, args.freq)
+    link = AppLink()
 
     for i, r in enumerate(results, 1):
-        print(format_frame(i, r, pattern))
+        app = link.update(r["psdu"], r["fcs_ok"]) if "fcs_ok" in r else None
+        print(format_frame(i, r, pattern, app))
         if args.hex and "psdu" in r:
             print(f"      {r['psdu'][:64].hex(' ')}")
         if args.fcs_search and r.get("fcs_ok") is False:
@@ -424,6 +552,8 @@ def main():
     frames = sum("fcs_ok" in r for r in results)
     good = sum(r.get("fcs_ok", False) for r in results)
     print(f"bursts={len(results)} frames={frames} fcs_ok={good}")
+    if link.frames or link.unidentified:
+        print(link.summary())
     return 0 if good else 1
 
 

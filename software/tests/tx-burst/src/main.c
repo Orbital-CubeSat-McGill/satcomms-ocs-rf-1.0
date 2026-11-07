@@ -38,7 +38,7 @@
 #define PC_EXPECTED      0x15   /* preset 0 with BBEN set */
 
 static const struct device *const radio = DEVICE_DT_GET(DT_NODELABEL(at86rf215));
-static const char pattern[] = "OCS-RF-1 TEST BURST 0123456789 ";
+static const char pattern[] = "GOAAATWDE";
 static uint8_t psdu[BURST_LEN];
 
 static bool setup(void)

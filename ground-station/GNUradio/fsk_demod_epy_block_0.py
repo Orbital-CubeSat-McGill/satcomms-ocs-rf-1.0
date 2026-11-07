@@ -24,6 +24,7 @@ class blk(gr.sync_block):
         import fsk_decode
         self.fd = fsk_decode
         self.sync = fsk_decode.FrameSync()
+        self.link = fsk_decode.AppLink()
         self.pattern = fsk_decode.PATTERNS.get(self.expect)
 
     def work(self, input_items, output_items):
@@ -39,6 +40,11 @@ class blk(gr.sync_block):
         line = (f"[{len(self.frames):4}] len={r['len']} fcs={'ok ' if r['fcs_ok'] else 'BAD'} ok={good}"
                 f" pol={'+' if r['polarity'] > 0 else '-'} sync_err={r['sync_errors']}"
                 f" offset={r['offset'] / 1e3:+5.1f}kHz dev={r['deviation'] / 1e3:4.1f}kHz")
+        if r['snr'] is not None:
+            line += f" snr={r['snr']:4.1f}dB"
+        app = self.link.update(r['psdu'], r['fcs_ok'])
+        if app:
+            return f"{line} {self.fd.format_app(app)}"
         if self.pattern:
             errors, total = self.fd.count_bit_errors(r['psdu'][:-self.fd.FCS_LEN], self.pattern)
             line += f" bit_err={errors}/{total}"

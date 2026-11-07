@@ -73,6 +73,25 @@ def tx_burst_payload():
     return (PATTERN * 100)[:2043]
 
 
+def app_payload(counter, call=b"VE3ABC", uptime_ms=None, reset_cause=0x40, tx_power=15, tx_errors=0):
+    """The app's frame without its FCS, laid out here by hand so the test checks the parser."""
+    uptime_ms = 1000 * counter if uptime_ms is None else uptime_ms
+    return (bytes([1]) + call.ljust(10) + counter.to_bytes(4, "little") + uptime_ms.to_bytes(4, "little")
+            + bytes([reset_cause, tx_power]) + tx_errors.to_bytes(4, "little") + fd.app_pattern(counter))
+
+
+def app_psdu(counter, **kw):
+    payload = app_payload(counter, **kw)
+    return payload + zlib.crc32(payload).to_bytes(4, "little")
+
+
+def flip_bits(psdu, bits):
+    out = bytearray(psdu)
+    for b in bits:
+        out[b // 8] ^= 1 << (b % 8)
+    return bytes(out)
+
+
 class Decoder(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
@@ -167,6 +186,89 @@ class Decoder(unittest.TestCase):
         self.assertEqual(r[0]["status"], "truncated")
 
 
+class AppFrames(unittest.TestCase):
+    PATTERN_BIT = 8 * fd.APP_PATTERN
+
+    def test_frame_length_is_the_apps(self):
+        self.assertEqual(len(app_psdu(0)), fd.APP_LEN)
+
+    def test_pattern_changes_with_the_counter(self):
+        for a, b in ((0, 1), (1000, 1001)):
+            errors, total = fd.count_bit_errors(fd.app_pattern(a), fd.app_pattern(b))
+            self.assertAlmostEqual(errors / total, 0.5, delta=0.1)
+
+    def test_fields(self):
+        f = fd.parse_app_frame(app_psdu(70000, call=b"VA3XYZ/M", uptime_ms=123456, reset_cause=0x01, tx_power=31, tx_errors=7))
+        self.assertEqual(f, {"version": 1, "call": "VA3XYZ/M", "counter": 70000, "uptime_ms": 123456,
+                             "reset_cause": 0x01, "tx_power": 31, "tx_errors": 7})
+
+    def test_clean_run(self):
+        link = fd.AppLink()
+        for c in range(5):
+            app = link.update(app_psdu(c), True)
+            self.assertEqual((app["counter"], app["errors"]), (c, 0))
+        self.assertEqual((link.frames, link.lost, link.bad), (5, 0, 0))
+
+    def test_gap_counts_as_lost(self):
+        link = fd.AppLink()
+        for c in (10, 11, 15):
+            link.update(app_psdu(c), True)
+        self.assertEqual((link.frames, link.lost), (3, 3))
+
+    def test_bad_frame_counts_bit_errors(self):
+        link = fd.AppLink()
+        link.update(app_psdu(4), True)
+        app = link.update(flip_bits(app_psdu(5), [self.PATTERN_BIT + 3, self.PATTERN_BIT + 90]), False)
+        self.assertEqual((app["counter"], app["errors"], app["good"]), (5, 2, False))
+        link.update(app_psdu(6), True)
+        self.assertEqual((link.lost, link.bad, link.bit_errors), (0, 1, 2))
+
+    def test_bad_frame_with_a_damaged_counter_is_still_identified(self):
+        link = fd.AppLink()
+        link.update(app_psdu(4), True)
+        app = link.update(flip_bits(app_psdu(7), [8 * fd.APP_COUNTER + 5, self.PATTERN_BIT]), False)
+        self.assertEqual((app["counter"], app["errors"]), (7, 1))
+        self.assertEqual(link.lost, 2)
+
+    def test_garbage_is_unidentified_then_lost(self):
+        link = fd.AppLink()
+        link.update(app_psdu(4), True)
+        garbage = np.random.default_rng(1).bytes(fd.APP_LEN)
+        self.assertIsNone(link.update(garbage, False)["counter"])
+        link.update(app_psdu(6), True)
+        self.assertEqual((link.unidentified, link.bad, link.lost), (1, 0, 1))
+        self.assertIn("unidentified", fd.format_app(link.update(garbage, False)))
+
+    def test_reboot_is_not_loss(self):
+        link = fd.AppLink()
+        for c in (100, 101, 0, 1):
+            link.update(app_psdu(c), True)
+        self.assertEqual((link.reboots, link.lost, link.frames), (1, 0, 4))
+
+    def test_other_frames_are_left_alone(self):
+        link = fd.AppLink()
+        burst = tx_burst_payload()
+        self.assertIsNone(link.update(burst + zlib.crc32(burst).to_bytes(4, "little"), True))
+        other = bytes([2]) + app_psdu(0)[1:]
+        self.assertIsNone(link.update(other, True))
+        self.assertEqual(link.frames, 0)
+
+    def test_printed_line(self):
+        line = fd.format_app(fd.AppLink().update(app_psdu(3, uptime_ms=3500), True))
+        self.assertEqual(line, "VE3ABC cnt=3 up=3.5s rst=0x40 pwr=15 txerr=0 lost=0 bad=0 bit_err=0/792")
+
+    def test_capture_end_to_end(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "capture.iq")
+            write_capture(path, [modulate(frame_bits(app_payload(c)), cfo=3e3) for c in (0, 1, 3)], gap_s=0.02)
+            results = fd.decode_capture(path, RATE, TUNE, FREQ)
+        link = fd.AppLink()
+        for r in results:
+            self.assertEqual(r["phr"]["len"], fd.APP_LEN)
+            link.update(r["psdu"], r["fcs_ok"])
+        self.assertEqual((link.frames, link.lost, link.bad, link.bit_errors), (3, 1, 0, 0))
+
+
 class Fcs(unittest.TestCase):
     payload = bytes(range(200))
 
@@ -238,6 +340,17 @@ class Stream(unittest.TestCase):
         r = self.run_stream(self.soft(frame_bits(bytes(range(124)), crc=b"\xde\xad\xbe\xef")))
         self.assertEqual(len(r), 1)
         self.assertFalse(r[0]["fcs_ok"])
+
+    def test_snr_comes_from_the_scatter_and_ignores_the_offset(self):
+        rng = np.random.default_rng(1)
+        bits = np.unpackbits(np.frombuffer(rng.bytes(500), dtype=np.uint8))
+        for spread_db in (10, 20):
+            sigma = 10 ** (-spread_db / 20)
+            soft = 2.0 * bits - 1 + 0.3 + sigma * rng.standard_normal(len(bits))
+            self.assertAlmostEqual(fd.estimate_snr(soft), spread_db + fd.SNR_CAL_DB, delta=0.5)
+
+    def test_snr_with_nothing_to_measure(self):
+        self.assertIsNone(fd.estimate_snr(np.ones(100)))
 
     def test_noise_alone_reports_nothing(self):
         self.assertEqual(self.run_stream(self.noise(500000)), [])
