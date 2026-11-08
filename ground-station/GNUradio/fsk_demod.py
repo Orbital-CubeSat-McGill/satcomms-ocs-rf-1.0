@@ -73,7 +73,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         self.rf_gain = rf_gain = 16
         self.offset_hz = offset_hz = 0
         self.fsk_deviation = fsk_deviation = 25e3
-        self.freq = freq = 915e6
+        self.freq = freq = 905e6
         self.decim = decim = 16
 
         ##################################################
@@ -92,7 +92,7 @@ class fsk_demod(gr.top_block, Qt.QWidget):
         self._fsk_deviation_range = qtgui.Range(0, 50e3, 5e3, 25e3, 200)
         self._fsk_deviation_win = qtgui.RangeWidget(self._fsk_deviation_range, self.set_fsk_deviation, "'fsk_deviation'", "counter", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._fsk_deviation_win)
-        self._freq_range = qtgui.Range(900e6, 930e6, 1e6, 915e6, 200)
+        self._freq_range = qtgui.Range(900e6, 930e6, 1e6, 905e6, 200)
         self._freq_win = qtgui.RangeWidget(self._freq_range, self.set_freq, "'freq'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._freq_win)
         self.soapy_hackrf_source_0 = None

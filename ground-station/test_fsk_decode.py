@@ -16,8 +16,8 @@ import numpy as np
 import fsk_decode as fd
 
 RATE = 8e6
-TUNE = 915.5e6
-FREQ = 915e6
+TUNE = 905.5e6
+FREQ = 905e6
 
 
 def frame_bits(payload, length=None, crc=None):

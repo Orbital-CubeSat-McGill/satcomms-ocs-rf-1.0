@@ -4,7 +4,7 @@ Offline decoder for the hat's MR-FSK frames, from a hackrf_transfer capture.
 
 Capture (8 MS/s, tuned 500 kHz off the signal to stay clear of the DC spike):
 
-    hackrf_transfer -r capture.iq -f 915500000 -s 8000000 -a 0 -l 16 -g 24 -n 80000000
+    hackrf_transfer -r capture.iq -f 905500000 -s 8000000 -a 0 -l 16 -g 24 -n 80000000
 
 Decode:
 
@@ -376,7 +376,7 @@ class FrameSync:
         return float(np.mean(self.buf[i - n:i])) * DEVIATION
 
 
-def decode_capture(path, rate=8e6, tune=915.5e6, freq=915e6):
+def decode_capture(path, rate=8e6, tune=905.5e6, freq=905e6):
     z = read_channel(path, rate, freq - tune)
     bursts = find_bursts(z)
     noise = noise_power(z, bursts)
@@ -406,8 +406,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("capture", help="signed 8-bit IQ file from hackrf_transfer -r")
     ap.add_argument("--rate", type=float, default=8e6, help="capture sample rate, Hz")
-    ap.add_argument("--tune", type=float, default=915.5e6, help="capture centre frequency, Hz")
-    ap.add_argument("--freq", type=float, default=915e6, help="signal frequency, Hz")
+    ap.add_argument("--tune", type=float, default=905.5e6, help="capture centre frequency, Hz")
+    ap.add_argument("--freq", type=float, default=905e6, help="signal frequency, Hz")
     ap.add_argument("--expect", choices=sorted(PATTERNS) + ["greenbear"], help="tx-burst bit-error check, or greenbear header parse")
     ap.add_argument("--fcs-search", action="store_true", help="on a bad FCS, try the CRC-32 variants")
     ap.add_argument("--hex", action="store_true", help="print the first 64 PSDU bytes of each frame")

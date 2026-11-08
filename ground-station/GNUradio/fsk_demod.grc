@@ -45,7 +45,7 @@ blocks:
     start: 900e6
     step: 1e6
     stop: 930e6
-    value: 915e6
+    value: 905e6
     widget: counter_slider
   states:
     bus_sink: false

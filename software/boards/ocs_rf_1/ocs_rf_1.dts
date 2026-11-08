@@ -81,7 +81,7 @@
 			compatible = "atmel,at86rf215";
 			reg = <0>;
 			spi-max-frequency = <1000000>;
-			rf09-base-freq-hz = <915000000>; // Inside Canada's 902-928 MHz ISM band
+			rf09-base-freq-hz = <905000000>; // Inside Canada's 902-928 MHz ISM band
 			rf09-channel-spacing-hz = <200000>;
 
 			// AT86RF215 IRQ pin is active high after reset (datasheet 4.3, RF_CFG.IRQP). Update this flag if the driver changes IRQP.
