@@ -44,6 +44,7 @@
 #define CRC_SIZE         2
 #define MAX_CONTENT      1024
 #define MAX_LOGICAL      (HEADER_SIZE + MAX_CONTENT + CRC_SIZE)
+#define FCS_SIZE         4      /* radio_tx's length includes the FCS: the chip overwrites the last 4 bytes */
 #define ACCUM_MAX        1100
 
 #define CALLSIGN_0       'V'
@@ -64,7 +65,7 @@ K_SEM_DEFINE(rx_sem, 0, 1);
 
 static uint8_t accum[ACCUM_MAX];
 static size_t accum_len;
-static uint8_t logical[MAX_LOGICAL];
+static uint8_t logical[MAX_LOGICAL + FCS_SIZE];
 
 static unsigned int sent_ok;
 static unsigned int drop_cobs;
@@ -101,7 +102,7 @@ static bool callsign_ok(const uint8_t *f)
 static void handle_cobs_frame(const uint8_t *enc, size_t enc_len)
 {
 	const struct rf215_api *api = radio->api;
-	int n = cobs_decode(enc, enc_len, logical, sizeof(logical));
+	int n = cobs_decode(enc, enc_len, logical, MAX_LOGICAL);
 
 	if (n < 0) {
 		drop_cobs++;
@@ -141,7 +142,9 @@ static void handle_cobs_frame(const uint8_t *enc, size_t enc_len)
 		return;
 	}
 
-	int ret = api->radio_tx(radio, RF09, logical, (size_t)n, TX_TIMEOUT_MS);
+	/* Room after the packet for the FCS, so the chip doesn't overwrite its CRC-16 and content */
+	memset(&logical[n], 0, FCS_SIZE);
+	int ret = api->radio_tx(radio, RF09, logical, (size_t)n + FCS_SIZE, TX_TIMEOUT_MS);
 	int off = api->set_sleep(radio, RF09, 0);
 	k_msleep(1);
 

@@ -217,10 +217,11 @@ static bool test_conf(void)
     pass &= api->radio_conf(radio, RF24, &conf24) == 0;
     pass &= conf_regs_match(REG_RF24_CS, REG_RF24_PLL, rf24_regs);
 
-    /* The values the driver will really use: 915 MHz, 200 kHz, default LBW */
+    /* The values the driver will really use: 905 MHz, 200 kHz, default LBW */
     conf.cs = 200000;
+    conf.base_freq = 905000000;
     conf.lbw = RF215_PLL_LBW_DEFAULT;
-    const uint8_t rf09_final[6] = {0x08, 0xF8, 0x8E, 0x00, 0x00, 0x08};
+    const uint8_t rf09_final[6] = {0x08, 0x68, 0x8D, 0x00, 0x00, 0x08};
 
     pass &= api->radio_conf(radio, RF09, &conf) == 0;
     pass &= conf_regs_match(REG_RF09_CS, REG_RF09_PLL, rf09_final);
@@ -395,7 +396,7 @@ static bool test_channel(void)
 
     /* Back to what the driver uses */
     conf.cs = 200000;
-    conf.base_freq = 915000000;
+    conf.base_freq = 905000000;
     pass &= api->radio_conf(radio, RF09, &conf) == 0;
 
     printk("chan   %s\n", pass ? "PASS" : "FAIL");
@@ -491,7 +492,7 @@ static bool test_txprep(void)
     const uint32_t ready = RF09_EVT_TRXRDY | RF09_EVT_ERROR;
     const uint8_t txprep = CMD_TXPREP, trxoff = CMD_TRXOFF;
     const struct rf215_radio_conf conf = {
-        .cm = RF215_CM_IEEE, .cs = 400000, .base_freq = 915000000,
+        .cm = RF215_CM_IEEE, .cs = 400000, .base_freq = 905000000,
         .lbw = RF215_PLL_LBW_DEFAULT,
     };
     uint8_t state = 0xAA, cs = 0xAA, lock = 0xAA;
@@ -508,7 +509,7 @@ static bool test_txprep(void)
     pass &= conf_ret == RF215_INVAL_CONF && preset_ret == RF215_INVAL_CONF;
     pass &= rf215_blk_read(radio, REG_RF09_CS, &cs, 1) == 0 && cs == 0x08;
 
-    /* 915.2 MHz, then back. Writing CNM makes the PLL lock again (section 6.3.1) */
+    /* 905.2 MHz, then back. Writing CNM makes the PLL lock again (section 6.3.1) */
     k_event_clear(&data->events, ready);
     int chan_ret = api->set_channel(radio, RF09, 1);
 
