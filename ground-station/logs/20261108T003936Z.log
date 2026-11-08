@@ -1,0 +1,12 @@
+2026-11-08T00:39:36.505Z # fsk_demod start, samp_rate=8e+06, log /home/barko/documents/projects/cubesat/satcomms-ocs-rf-1.0/ground-station/logs/20261108T003936Z.log
+2026-11-08T00:39:36.505Z # freq=905000000.0
+2026-11-08T00:39:36.505Z # rf_gain=16
+2026-11-08T00:39:36.505Z # vga_gain=24
+2026-11-08T00:39:36.505Z # amp=False
+2026-11-08T00:39:36.505Z # offset_hz=0
+2026-11-08T00:39:36.505Z # sq_thresh=-75
+2026-11-08T00:39:36.505Z # iq off
+2026-11-08T00:40:03.093Z [   1] len=18 fcs=ok  ok=1 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=21.2dB bit_err=39/112 b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:40:23.115Z [   2] len=23 fcs=ok  ok=2 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=24.8dB bit_err=59/152 b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T00:40:43.137Z [   3] len=20 fcs=ok  ok=3 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz bit_err=49/128 b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T00:41:26.000Z # fsk_demod stop, 3 frames

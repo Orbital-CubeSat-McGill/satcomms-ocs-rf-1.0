@@ -14,10 +14,11 @@ import zlib
 import numpy as np
 
 import fsk_decode as fd
+import greenbear_packet as gbp
 
 RATE = 8e6
-TUNE = 915.5e6
-FREQ = 915e6
+TUNE = 905.5e6
+FREQ = 905e6
 
 
 def frame_bits(payload, length=None, crc=None):
@@ -82,6 +83,12 @@ def app_payload(counter, call=b"VE3ABC", uptime_ms=None, reset_cause=0x40, tx_po
 
 def app_psdu(counter, **kw):
     payload = app_payload(counter, **kw)
+    return payload + zlib.crc32(payload).to_bytes(4, "little")
+
+
+def on_air(packet, spare=True):
+    """The PSDU the chip sends. With spare bytes the FCS follows the packet, without them it overwrites its tail."""
+    payload = packet if spare else packet[:-fd.FCS_LEN]
     return payload + zlib.crc32(payload).to_bytes(4, "little")
 
 
@@ -267,6 +274,60 @@ class AppFrames(unittest.TestCase):
             self.assertEqual(r["phr"]["len"], fd.APP_LEN)
             link.update(r["psdu"], r["fcs_ok"])
         self.assertEqual((link.frames, link.lost, link.bad, link.bit_errors), (3, 1, 0, 0))
+
+
+class GreenBear(unittest.TestCase):
+    def test_whole_message_and_gaps(self):
+        link = fd.GreenBearLink()
+        for seq in (10, 11, 14):
+            gb = link.update(on_air(gbp.build(seq, 1700000000, f"log line {seq}\n".encode())), True)
+        self.assertEqual((gb["pkt"].seq, gb["missed"], gb["tail_lost"], link.lost), (14, 2, False, 2))
+        self.assertEqual(fd.format_greenbear(gb), [
+            "      greenbear callsign='VE3 JKB' seq=14 time=1700000000 len=12 lost=2 bad=0 crc16=ok GAP missed=2",
+            "      msg: 'log line 14\\n'"])
+
+    def test_seq_going_back_is_a_restart_not_loss(self):
+        """The test stubs loop 0x1234, 1, 7: on air that once showed lost=65534."""
+        link = fd.GreenBearLink()
+        for seq in (1, 7, 1, 7, 7):
+            gb = link.update(on_air(gbp.build(seq, 0, b"ab")), True)
+        self.assertEqual((link.lost, link.restarts), (10, 2))
+        self.assertTrue(gb["restart"])
+        self.assertIn("RESTART restarts=2", fd.format_greenbear(gb)[0])
+
+    def test_seq_wrap_is_a_gap(self):
+        link = fd.GreenBearLink()
+        for seq in (65534, 1):
+            gb = link.update(on_air(gbp.build(seq, 0, b"ab")), True)
+        self.assertEqual((gb["missed"], gb["restart"], link.lost), (2, False, 2))
+
+    def test_long_message_is_printed_whole(self):
+        content = bytes(range(32, 127)) * 10
+        gb = fd.GreenBearLink().update(on_air(gbp.build(1, 2, content)), True)
+        self.assertEqual(fd.format_greenbear(gb)[1], f"      msg: {content.decode()!r}")
+
+    def test_tail_overwritten_by_the_fcs(self):
+        """What usb-bridge does when it sends the packet's own length: the chip's FCS replaces the last 4 bytes."""
+        link = fd.GreenBearLink()
+        gb = link.update(on_air(gbp.build(5, 42, b"hello world"), spare=False), True)
+        self.assertEqual((gb["pkt"].seq, gb["pkt"].content, gb["tail_lost"], link.tail_lost), (5, b"hello wor", True, 1))
+        self.assertIn("crc16=lost", fd.format_greenbear(gb)[0])
+        self.assertEqual(fd.format_greenbear(gb)[1], "      msg: 'hello wor' [last 2 bytes lost]")
+
+    def test_short_packet_with_its_length_overwritten_is_unparsed(self):
+        link = fd.GreenBearLink()
+        gb = link.update(on_air(gbp.build(5, 42, b""), spare=False), True)
+        self.assertIsNone(gb["pkt"])
+        self.assertEqual(link.unparsed, 1)
+
+    def test_other_frames_show_their_bytes(self):
+        gb = fd.GreenBearLink().update(on_air(b"not a packet"), True)
+        self.assertEqual(fd.format_greenbear(gb)[1], "      msg: 'not a packet'")
+
+    def test_bad_fcs_is_counted(self):
+        link = fd.GreenBearLink()
+        self.assertIsNone(link.update(flip_bits(on_air(gbp.build(1, 2, b"x")), [3]), False))
+        self.assertEqual(link.bad, 1)
 
 
 class Fcs(unittest.TestCase):

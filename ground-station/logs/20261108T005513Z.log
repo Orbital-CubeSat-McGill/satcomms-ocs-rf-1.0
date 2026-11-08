@@ -1,0 +1,18 @@
+2026-11-08T00:55:13.239Z # fsk_demod start, samp_rate=8e+06, log /home/barko/documents/projects/cubesat/satcomms-ocs-rf-1.0/ground-station/logs/20261108T005513Z.log
+2026-11-08T00:55:13.239Z # freq=905000000.0
+2026-11-08T00:55:13.239Z # rf_gain=16
+2026-11-08T00:55:13.239Z # vga_gain=24
+2026-11-08T00:55:13.239Z # amp=False
+2026-11-08T00:55:13.239Z # offset_hz=0
+2026-11-08T00:55:13.239Z # sq_thresh=-75
+2026-11-08T00:55:13.239Z # iq off
+2026-11-08T00:55:14.073Z [   1] len=18 fcs=ok  ok=1 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.2dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:55:14.073Z       greenbear parse: frame truncated unparsed=1
+2026-11-08T00:55:14.073Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T00:55:15.088Z [   2] len=23 fcs=ok  ok=2 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=27.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T00:55:15.088Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=0 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes)
+2026-11-08T00:55:15.088Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T00:55:16.104Z [   3] len=20 fcs=ok  ok=3 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T00:55:16.104Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=5 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T00:55:16.104Z       msg: '' [last 2 bytes lost]
+2026-11-08T00:56:51.000Z # fsk_demod stop, 3 frames

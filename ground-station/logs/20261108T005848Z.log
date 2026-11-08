@@ -1,0 +1,39 @@
+2026-11-08T00:58:48.287Z # fsk_demod start, samp_rate=8e+06, log /home/barko/documents/projects/cubesat/satcomms-ocs-rf-1.0/ground-station/logs/20261108T005848Z.log
+2026-11-08T00:58:48.287Z # freq=905000000.0
+2026-11-08T00:58:48.287Z # rf_gain=16
+2026-11-08T00:58:48.287Z # vga_gain=24
+2026-11-08T00:58:48.287Z # amp=False
+2026-11-08T00:58:48.287Z # offset_hz=0
+2026-11-08T00:58:48.287Z # sq_thresh=-75
+2026-11-08T00:58:48.287Z # iq off
+2026-11-08T00:58:49.072Z [   1] len=18 fcs=ok  ok=1 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:58:49.072Z       greenbear parse: frame truncated unparsed=1
+2026-11-08T00:58:49.072Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T00:58:50.071Z [   2] len=23 fcs=ok  ok=2 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.2dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T00:58:50.071Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=0 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes)
+2026-11-08T00:58:50.071Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T00:58:51.087Z [   3] len=20 fcs=ok  ok=3 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T00:58:51.087Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=5 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T00:58:51.087Z       msg: '' [last 2 bytes lost]
+2026-11-08T00:58:52.103Z [   4] len=18 fcs=ok  ok=4 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.5dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:58:52.103Z       greenbear parse: frame truncated unparsed=2
+2026-11-08T00:58:52.103Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T00:58:53.119Z [   5] len=23 fcs=ok  ok=5 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=29.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T00:58:53.119Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=65534 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=65529
+2026-11-08T00:58:53.119Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T00:58:54.134Z [   6] len=20 fcs=ok  ok=6 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T00:58:54.134Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=65539 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T00:58:54.134Z       msg: '' [last 2 bytes lost]
+2026-11-08T00:58:55.150Z [   7] len=18 fcs=ok  ok=7 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:58:55.150Z       greenbear parse: frame truncated unparsed=3
+2026-11-08T00:58:55.150Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T00:58:56.149Z [   8] len=23 fcs=ok  ok=8 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T00:58:56.149Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=131068 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=65529
+2026-11-08T00:58:56.149Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T00:58:57.164Z [   9] len=20 fcs=ok  ok=9 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T00:58:57.164Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=131073 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T00:58:57.164Z       msg: '' [last 2 bytes lost]
+2026-11-08T00:58:58.181Z [  10] len=18 fcs=ok  ok=10 pol=+ sync_err=0 offset= +0.3kHz dev=24.4kHz snr=29.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T00:58:58.181Z       greenbear parse: frame truncated unparsed=4
+2026-11-08T00:58:58.181Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T00:58:59.198Z # fsk_demod stop, 11 frames

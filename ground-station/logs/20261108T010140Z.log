@@ -1,0 +1,282 @@
+2026-11-08T01:01:40.496Z # fsk_demod start, samp_rate=8e+06, log /home/barko/documents/projects/cubesat/satcomms-ocs-rf-1.0/ground-station/logs/20261108T010140Z.log
+2026-11-08T01:01:40.497Z # freq=905000000.0
+2026-11-08T01:01:40.497Z # rf_gain=16
+2026-11-08T01:01:40.497Z # vga_gain=24
+2026-11-08T01:01:40.497Z # amp=False
+2026-11-08T01:01:40.497Z # offset_hz=0
+2026-11-08T01:01:40.497Z # sq_thresh=-75
+2026-11-08T01:01:40.497Z # iq off
+2026-11-08T01:02:47.948Z [   1] len=18 fcs=ok  ok=1 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=23.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:02:47.948Z       greenbear parse: frame truncated unparsed=1
+2026-11-08T01:02:47.948Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:02:48.996Z [   2] len=23 fcs=ok  ok=2 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.7dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:02:48.996Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=0 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes)
+2026-11-08T01:02:48.996Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:02:50.029Z [   3] len=20 fcs=ok  ok=3 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:02:50.029Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=5 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:02:50.029Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:02:51.028Z [   4] len=18 fcs=ok  ok=4 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=25.5dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:02:51.028Z       greenbear parse: frame truncated unparsed=2
+2026-11-08T01:02:51.028Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:02:52.044Z [   5] len=23 fcs=ok  ok=5 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:02:52.044Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=5 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=1
+2026-11-08T01:02:52.044Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:02:53.059Z [   6] len=20 fcs=ok  ok=6 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:02:53.059Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=10 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:02:53.059Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:02:54.075Z [   7] len=18 fcs=ok  ok=7 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.4dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:02:54.076Z       greenbear parse: frame truncated unparsed=3
+2026-11-08T01:02:54.076Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:02:55.092Z [   8] len=23 fcs=ok  ok=8 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.0dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:02:55.092Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=10 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=2
+2026-11-08T01:02:55.092Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:02:56.107Z [   9] len=20 fcs=ok  ok=9 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:02:56.107Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=15 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:02:56.107Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:02:57.123Z [  10] len=18 fcs=ok  ok=10 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.1dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:02:57.123Z       greenbear parse: frame truncated unparsed=4
+2026-11-08T01:02:57.123Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:02:58.138Z [  11] len=23 fcs=ok  ok=11 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.2dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:02:58.138Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=15 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=3
+2026-11-08T01:02:58.138Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:02:59.138Z [  12] len=20 fcs=ok  ok=12 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:02:59.138Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=20 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:02:59.138Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:00.154Z [  13] len=18 fcs=ok  ok=13 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.9dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:00.154Z       greenbear parse: frame truncated unparsed=5
+2026-11-08T01:03:00.154Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:01.153Z [  14] len=23 fcs=ok  ok=14 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:01.153Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=20 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=4
+2026-11-08T01:03:01.153Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:02.169Z [  15] len=20 fcs=ok  ok=15 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:02.169Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=25 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:02.169Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:03.184Z [  16] len=18 fcs=ok  ok=16 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:03.184Z       greenbear parse: frame truncated unparsed=6
+2026-11-08T01:03:03.184Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:04.201Z [  17] len=23 fcs=ok  ok=17 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.6dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:04.201Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=25 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=5
+2026-11-08T01:03:04.201Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:05.216Z [  18] len=20 fcs=ok  ok=18 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:05.216Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=30 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:05.216Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:06.217Z [  19] len=18 fcs=ok  ok=19 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.9dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:06.217Z       greenbear parse: frame truncated unparsed=7
+2026-11-08T01:03:06.217Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:07.231Z [  20] len=23 fcs=ok  ok=20 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.6dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:07.232Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=30 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=6
+2026-11-08T01:03:07.232Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:08.247Z [  21] len=20 fcs=ok  ok=21 pol=+ sync_err=0 offset= +0.3kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:08.247Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=35 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:08.247Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:09.247Z [  22] len=18 fcs=ok  ok=22 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.7dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:09.247Z       greenbear parse: frame truncated unparsed=8
+2026-11-08T01:03:09.247Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:10.262Z [  23] len=23 fcs=ok  ok=23 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=26.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:10.262Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=35 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=7
+2026-11-08T01:03:10.265Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:11.278Z [  24] len=20 fcs=ok  ok=24 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:11.278Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=40 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:11.278Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:12.278Z [  25] len=18 fcs=ok  ok=25 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:12.278Z       greenbear parse: frame truncated unparsed=9
+2026-11-08T01:03:12.278Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:13.375Z [  26] len=23 fcs=ok  ok=26 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:13.376Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=40 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=8
+2026-11-08T01:03:13.376Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:14.423Z [  27] len=20 fcs=ok  ok=27 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:14.423Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=45 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:14.423Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:15.456Z [  28] len=18 fcs=ok  ok=28 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=25.1dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:15.456Z       greenbear parse: frame truncated unparsed=10
+2026-11-08T01:03:15.456Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:16.472Z [  29] len=23 fcs=ok  ok=29 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.7dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:16.472Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=45 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=9
+2026-11-08T01:03:16.472Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:17.472Z [  30] len=20 fcs=ok  ok=30 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:17.472Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=50 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:17.472Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:18.487Z [  31] len=18 fcs=ok  ok=31 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.7dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:18.487Z       greenbear parse: frame truncated unparsed=11
+2026-11-08T01:03:18.487Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:19.487Z [  32] len=23 fcs=ok  ok=32 pol=+ sync_err=0 offset= +0.3kHz dev=24.4kHz snr=25.1dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:19.487Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=50 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=10
+2026-11-08T01:03:19.487Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:20.502Z [  33] len=20 fcs=ok  ok=33 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:20.502Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=55 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:20.502Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:21.518Z [  34] len=18 fcs=ok  ok=34 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.7dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:21.518Z       greenbear parse: frame truncated unparsed=12
+2026-11-08T01:03:21.518Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:22.534Z [  35] len=23 fcs=ok  ok=35 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.1dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:22.534Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=55 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=11
+2026-11-08T01:03:22.534Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:23.534Z [  36] len=20 fcs=ok  ok=36 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:23.534Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=60 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:23.534Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:24.550Z [  37] len=18 fcs=ok  ok=37 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.5dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:24.550Z       greenbear parse: frame truncated unparsed=13
+2026-11-08T01:03:24.550Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:25.565Z [  38] len=23 fcs=ok  ok=38 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.9dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:25.565Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=60 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=12
+2026-11-08T01:03:25.565Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:26.581Z [  39] len=20 fcs=ok  ok=39 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:26.581Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=65 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:26.581Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:27.597Z [  40] len=18 fcs=ok  ok=40 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:27.597Z       greenbear parse: frame truncated unparsed=14
+2026-11-08T01:03:27.597Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:28.612Z [  41] len=23 fcs=ok  ok=41 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:28.612Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=65 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=13
+2026-11-08T01:03:28.612Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:29.612Z [  42] len=20 fcs=ok  ok=42 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:29.612Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=70 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:29.612Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:30.628Z [  43] len=18 fcs=ok  ok=43 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:30.628Z       greenbear parse: frame truncated unparsed=15
+2026-11-08T01:03:30.628Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:31.627Z [  44] len=23 fcs=ok  ok=44 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.4dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:31.627Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=70 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=14
+2026-11-08T01:03:31.627Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:32.642Z [  45] len=20 fcs=ok  ok=45 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:32.642Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=75 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:32.642Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:33.659Z [  46] len=18 fcs=ok  ok=46 pol=+ sync_err=0 offset= +0.3kHz dev=24.4kHz snr=27.3dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:33.659Z       greenbear parse: frame truncated unparsed=16
+2026-11-08T01:03:33.659Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:34.674Z [  47] len=23 fcs=ok  ok=47 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:34.674Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=75 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=15
+2026-11-08T01:03:34.674Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:35.690Z [  48] len=20 fcs=ok  ok=48 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:35.690Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=80 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:35.690Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:36.706Z [  49] len=18 fcs=ok  ok=49 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.7dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:36.706Z       greenbear parse: frame truncated unparsed=17
+2026-11-08T01:03:36.706Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:37.722Z [  50] len=23 fcs=ok  ok=50 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:37.722Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=80 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=16
+2026-11-08T01:03:37.722Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:38.722Z [  51] len=20 fcs=ok  ok=51 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:38.722Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=85 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:38.722Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:39.737Z [  52] len=18 fcs=ok  ok=52 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=25.9dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:39.737Z       greenbear parse: frame truncated unparsed=18
+2026-11-08T01:03:39.737Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:40.736Z [  53] len=23 fcs=ok  ok=53 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=27.1dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:40.736Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=85 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=17
+2026-11-08T01:03:40.736Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:41.752Z [  54] len=20 fcs=ok  ok=54 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:41.752Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=90 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:41.752Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:42.768Z [  55] len=18 fcs=ok  ok=55 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:42.768Z       greenbear parse: frame truncated unparsed=19
+2026-11-08T01:03:42.768Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:43.767Z [  56] len=23 fcs=ok  ok=56 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:43.767Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=90 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=18
+2026-11-08T01:03:43.770Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:44.783Z [  57] len=20 fcs=ok  ok=57 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:44.783Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=95 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:44.783Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:45.799Z [  58] len=18 fcs=ok  ok=58 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.2dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:45.799Z       greenbear parse: frame truncated unparsed=20
+2026-11-08T01:03:45.799Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:46.816Z [  59] len=23 fcs=ok  ok=59 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=25.6dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:46.816Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=95 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=19
+2026-11-08T01:03:46.816Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:47.831Z [  60] len=20 fcs=ok  ok=60 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:47.831Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=100 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:47.831Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:48.830Z [  61] len=18 fcs=ok  ok=61 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:48.830Z       greenbear parse: frame truncated unparsed=21
+2026-11-08T01:03:48.830Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:49.846Z [  62] len=23 fcs=ok  ok=62 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:49.846Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=100 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=20
+2026-11-08T01:03:49.846Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:50.861Z [  63] len=20 fcs=ok  ok=63 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:50.861Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=105 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:50.861Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:51.878Z [  64] len=18 fcs=ok  ok=64 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=25.5dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:51.878Z       greenbear parse: frame truncated unparsed=22
+2026-11-08T01:03:51.878Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:52.877Z [  65] len=23 fcs=ok  ok=65 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=28.3dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:52.877Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=105 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=21
+2026-11-08T01:03:52.877Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:53.892Z [  66] len=20 fcs=ok  ok=66 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:53.892Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=110 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:53.892Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:54.908Z [  67] len=18 fcs=ok  ok=67 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.1dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:54.908Z       greenbear parse: frame truncated unparsed=23
+2026-11-08T01:03:54.908Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:55.924Z [  68] len=23 fcs=ok  ok=68 pol=+ sync_err=0 offset= +0.3kHz dev=24.4kHz snr=27.3dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:55.924Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=110 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=22
+2026-11-08T01:03:55.924Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:56.939Z [  69] len=20 fcs=ok  ok=69 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:56.939Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=115 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:56.939Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:03:57.940Z [  70] len=18 fcs=ok  ok=70 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=26.3dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:03:57.940Z       greenbear parse: frame truncated unparsed=24
+2026-11-08T01:03:57.940Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:03:58.955Z [  71] len=23 fcs=ok  ok=71 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=26.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:03:58.955Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=115 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=23
+2026-11-08T01:03:58.955Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:03:59.954Z [  72] len=20 fcs=ok  ok=72 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:03:59.955Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=120 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:03:59.955Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:00.971Z [  73] len=18 fcs=ok  ok=73 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.3dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:00.971Z       greenbear parse: frame truncated unparsed=25
+2026-11-08T01:04:00.971Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:01.987Z [  74] len=23 fcs=ok  ok=74 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=27.6dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:01.987Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=120 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=24
+2026-11-08T01:04:01.987Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:03.001Z [  75] len=20 fcs=ok  ok=75 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:03.001Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=125 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:03.001Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:04.001Z [  76] len=18 fcs=ok  ok=76 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.6dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:04.001Z       greenbear parse: frame truncated unparsed=26
+2026-11-08T01:04:04.001Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:05.017Z [  77] len=23 fcs=ok  ok=77 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.9dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:05.017Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=125 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=25
+2026-11-08T01:04:05.017Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:06.017Z [  78] len=20 fcs=ok  ok=78 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:06.017Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=130 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:06.017Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:07.048Z [  79] len=18 fcs=ok  ok=79 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz snr=27.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:07.048Z       greenbear parse: frame truncated unparsed=27
+2026-11-08T01:04:07.048Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:08.049Z [  80] len=23 fcs=ok  ok=80 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.0dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:08.049Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=130 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=26
+2026-11-08T01:04:08.049Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:09.064Z [  81] len=20 fcs=ok  ok=81 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:09.064Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=135 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:09.064Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:10.080Z [  82] len=18 fcs=ok  ok=82 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.4dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:10.080Z       greenbear parse: frame truncated unparsed=28
+2026-11-08T01:04:10.080Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:11.080Z [  83] len=23 fcs=ok  ok=83 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=29.0dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:11.080Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=135 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=27
+2026-11-08T01:04:11.080Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:12.095Z [  84] len=20 fcs=ok  ok=84 pol=+ sync_err=0 offset= +0.2kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:12.095Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=140 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:12.095Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:13.111Z [  85] len=18 fcs=ok  ok=85 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=27.9dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:13.111Z       greenbear parse: frame truncated unparsed=29
+2026-11-08T01:04:13.111Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:14.111Z [  86] len=23 fcs=ok  ok=86 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.2dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:14.111Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=140 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=28
+2026-11-08T01:04:14.111Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:15.142Z [  87] len=20 fcs=ok  ok=87 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:15.143Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=145 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:15.143Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:16.159Z [  88] len=18 fcs=ok  ok=88 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.8dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:16.159Z       greenbear parse: frame truncated unparsed=30
+2026-11-08T01:04:16.159Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:17.158Z [  89] len=23 fcs=ok  ok=89 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=26.5dB b'VE3 JKB\x01\x01\x00\x00\xf1Se\x05\x00hel\xf1,^\xb5'
+2026-11-08T01:04:17.158Z       greenbear callsign='VE3 JKB' seq=1 time=1700000000 len=5 lost=145 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) RESTART restarts=29
+2026-11-08T01:04:17.158Z       msg: 'hel' [last 2 bytes lost]
+2026-11-08T01:04:18.173Z [  90] len=20 fcs=ok  ok=90 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz b'VE3 JKB\x01\x07\x00*\x00\x00\x00\x02\x00\x96J\x0b\xd6'
+2026-11-08T01:04:18.173Z       greenbear callsign='VE3 JKB' seq=7 time=42 len=2 lost=150 bad=0 crc16=lost (tail overwritten by the FCS: the bridge must send 4 more bytes) GAP missed=5
+2026-11-08T01:04:18.173Z       msg: '' [last 2 bytes lost]
+2026-11-08T01:04:19.189Z [  91] len=18 fcs=ok  ok=91 pol=+ sync_err=0 offset= +0.1kHz dev=24.4kHz snr=28.2dB b'VE3 JKB\x014\x12\x00\x00\x00\x00\xb9\xf5\xa0\xd6'
+2026-11-08T01:04:19.189Z       greenbear parse: frame truncated unparsed=31
+2026-11-08T01:04:19.189Z       msg: 'VE3 JKB\x014\x12\x00\x00\x00\x00'
+2026-11-08T01:04:20.001Z # fsk_demod stop, 91 frames

@@ -1,0 +1,2 @@
+# Raw IQ captures are 16 MB/s. Text logs are small and can be committed
+*.iq

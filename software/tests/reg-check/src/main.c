@@ -19,7 +19,7 @@
  * conf:   radio_conf must write what the datasheet's channel scheme says, shift
  *         LBW into bits 5:4, keep PLL bit 3, clear the channel and leave RF24's
  *         PLL alone. Bad arguments must be refused with no register changed. RF09
- *         is left on 915 MHz. Nothing starts the PLL.
+ *         is left on 905 MHz. Nothing starts the PLL.
  * front:  both radios' frontends must hold preset 0, from tables 6-51, 6-54, and 6-62
  *         for RF09 or 6-63 for RF24. AGCC's other bits must keep their reset values
  *         (0x81). AGCS.GCW is live gain, so it is masked. Only AGCC's expected value
@@ -35,7 +35,7 @@
  *         PLL, refuse radio_conf and select_preset, relock on a channel change, then
  *         return to TRXOFF. TXPREP doesn't transmit: the analog transmitter is still
  *         disabled (section 5.2.7).
- * freq:   RF09 must be on the devicetree's 915 MHz and 200 kHz, channel 0, default
+ * freq:   RF09 must be on the devicetree's 905 MHz and 200 kHz, channel 0, default
  *         LBW. Read once at boot, before any test here writes these registers, so
  *         it shows what init did. CCF0 differs from reset (902.2 MHz).
  * chan:   set_channel must take the whole 9-bit range and write the high bit to
@@ -217,10 +217,11 @@ static bool test_conf(void)
     pass &= api->radio_conf(radio, RF24, &conf24) == 0;
     pass &= conf_regs_match(REG_RF24_CS, REG_RF24_PLL, rf24_regs);
 
-    /* The values the driver will really use: 915 MHz, 200 kHz, default LBW */
+    /* The values the driver will really use: 905 MHz, 200 kHz, default LBW */
     conf.cs = 200000;
+    conf.base_freq = 905000000;
     conf.lbw = RF215_PLL_LBW_DEFAULT;
-    const uint8_t rf09_final[6] = {0x08, 0xF8, 0x8E, 0x00, 0x00, 0x08};
+    const uint8_t rf09_final[6] = {0x08, 0x68, 0x8D, 0x00, 0x00, 0x08};
 
     pass &= api->radio_conf(radio, RF09, &conf) == 0;
     pass &= conf_regs_match(REG_RF09_CS, REG_RF09_PLL, rf09_final);
@@ -309,7 +310,7 @@ static bool test_frontend(void)
 
 static bool test_freq(const uint8_t boot_regs[6])
 {
-    const uint8_t expected[6] = {0x08, 0xF8, 0x8E, 0x00, 0x00, 0x08};
+    const uint8_t expected[6] = {0x08, 0x68, 0x8D, 0x00, 0x00, 0x08};
     bool pass = memcmp(boot_regs, expected, sizeof(expected)) == 0;
 
     printk("freq   %s: boot regs %02x %02x %02x %02x %02x pll=%02x\n", pass ? "PASS" : "FAIL",
@@ -394,7 +395,7 @@ static bool test_channel(void)
 
     /* Back to what the driver uses */
     conf.cs = 200000;
-    conf.base_freq = 915000000;
+    conf.base_freq = 905000000;
     pass &= api->radio_conf(radio, RF09, &conf) == 0;
 
     printk("chan   %s\n", pass ? "PASS" : "FAIL");
@@ -490,7 +491,7 @@ static bool test_txprep(void)
     const uint32_t ready = RF09_EVT_TRXRDY | RF09_EVT_ERROR;
     const uint8_t txprep = CMD_TXPREP, trxoff = CMD_TRXOFF;
     const struct rf215_radio_conf conf = {
-        .cm = RF215_CM_IEEE, .cs = 400000, .base_freq = 915000000,
+        .cm = RF215_CM_IEEE, .cs = 400000, .base_freq = 905000000,
         .lbw = RF215_PLL_LBW_DEFAULT,
     };
     uint8_t state = 0xAA, cs = 0xAA, lock = 0xAA;
@@ -507,7 +508,7 @@ static bool test_txprep(void)
     pass &= conf_ret == RF215_INVAL_CONF && preset_ret == RF215_INVAL_CONF;
     pass &= rf215_blk_read(radio, REG_RF09_CS, &cs, 1) == 0 && cs == 0x08;
 
-    /* 915.2 MHz, then back. Writing CNM makes the PLL lock again (section 6.3.1) */
+    /* 905.2 MHz, then back. Writing CNM makes the PLL lock again (section 6.3.1) */
     k_event_clear(&data->events, ready);
     int chan_ret = api->set_channel(radio, RF09, 1);
 

@@ -45,7 +45,7 @@ blocks:
     start: 900e6
     step: 1e6
     stop: 930e6
-    value: 915e6
+    value: 905e6
     widget: counter_slider
   states:
     bus_sink: false
@@ -162,6 +162,179 @@ blocks:
     coordinate: [1200, 8.0]
     rotation: 0
     state: enabled
+- name: vga_gain
+  id: variable
+  parameters:
+    comment: ''
+    value: "24"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1400, 8.0]
+    rotation: 0
+    state: enabled
+- name: amp
+  id: variable
+  parameters:
+    comment: "HackRF front-end amplifier, on or off"
+    value: "False"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1504, 8.0]
+    rotation: 0
+    state: enabled
+- name: record_iq
+  id: variable_qtgui_check_box
+  parameters:
+    comment: Raw 8 MS/s capture into the log directory, 16 MB/s (57.6 GB per hour)
+    'false': 'False'
+    gui_hint: ''
+    label: Record IQ
+    'true': 'True'
+    type: bool
+    value: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1608, 8.0]
+    rotation: 0
+    state: enabled
+- name: log_dir
+  id: parameter
+  parameters:
+    alias: ''
+    comment: Empty means ground-station/logs, found from the script's path. Command line --log-dir
+    hide: none
+    label: Log directory
+    short_id: ''
+    type: str
+    value: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [40, 1080.0]
+    rotation: 0
+    state: enabled
+- name: logs
+  id: variable
+  parameters:
+    comment: ''
+    value: "os.path.abspath(log_dir or os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), os.pardir, 'logs'))"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 1080.0]
+    rotation: 0
+    state: enabled
+- name: run_id
+  id: variable
+  parameters:
+    comment: "UTC start of this run, so every run gets new files"
+    value: "time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [400, 1080.0]
+    rotation: 0
+    state: enabled
+- name: log_file
+  id: variable
+  parameters:
+    comment: ''
+    value: "os.path.join(logs, run_id + '.log')"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 1080.0]
+    rotation: 0
+    state: enabled
+- name: iq_file
+  id: variable
+  parameters:
+    comment: "A new file each time Record IQ is ticked, named by its UTC start time"
+    value: "os.path.join(logs, time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '.iq') if record_iq else os.devnull"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [752, 1080.0]
+    rotation: 0
+    state: enabled
+- name: import_0
+  id: import
+  parameters:
+    alias: ''
+    comment: ''
+    imports: "import os\nimport sys\nimport time"
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [40, 1160.0]
+    rotation: 0
+    state: enabled
+- name: blocks_copy_0
+  id: blocks_copy
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: Passes samples only while Record IQ is ticked
+    enabled: record_iq
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    showports: 'False'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [40, 648.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_interleaved_char_0
+  id: blocks_complex_to_interleaved_char
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: The same bytes as hackrf_transfer, so fsk_decode.py reads the file
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale_factor: '128.0'
+    vector_output: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [208, 656.0]
+    rotation: 0
+    state: enabled
+- name: blocks_file_sink_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: iq_file
+    type: byte
+    unbuffered: 'False'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [440, 640.0]
+    rotation: 0
+    state: enabled
 - name: blocks_moving_average_xx_0
   id: blocks_moving_average_xx
   parameters:
@@ -185,13 +358,22 @@ blocks:
 - name: epy_block_0
   id: epy_block
   parameters:
-    _source_code: "\"\"\"\nDecodes the hat's MR-FSK frames from the symbol sync's soft symbols, and prints them.\nThe frame logic is FrameSync in ground-station/fsk_decode.py.\n\"\"\"\nimport os\nimport sys\n\nimport numpy as np\nfrom gnuradio import gr\n\n\nclass blk(gr.sync_block):\n    \"\"\"OCS-RF frame decoder\"\"\"\n\n    def __init__(self, expect='tx-burst'):\n        gr.sync_block.__init__(self, name='OCS-RF frame decoder', in_sig=[np.float32], out_sig=None)\n        self.expect = expect\n        self.fd = None\n        self.frames = []\n\n    def _load(self):\n        # Not at import time: GRC also runs this file, from somewhere else, to read the ports\n        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))\n        import fsk_decode\n        self.fd = fsk_decode\n        self.sync = fsk_decode.FrameSync()\n        self.link = fsk_decode.AppLink()\n        self.pattern = fsk_decode.PATTERNS.get(self.expect)\n\n    def work(self, input_items, output_items):\n        if self.fd is None:\n            self._load()\n        for r in self.sync.feed(np.array(input_items[0])):\n            self.frames.append(r)\n            print(self._format(r), flush=True)\n        return len(input_items[0])\n\n    def _format(self, r):\n        good = sum(f['fcs_ok'] for f in self.frames)\n        line = (f\"[{len(self.frames):4}] len={r['len']} fcs={'ok ' if r['fcs_ok'] else 'BAD'} ok={good}\"\n                f\" pol={'+' if r['polarity'] > 0 else '-'} sync_err={r['sync_errors']}\"\n                f\" offset={r['offset'] / 1e3:+5.1f}kHz dev={r['deviation'] / 1e3:4.1f}kHz\")\n        if r['snr'] is not None:\n            line += f\" snr={r['snr']:4.1f}dB\"\n        app = self.link.update(r['psdu'], r['fcs_ok'])\n        if app:\n            return f\"{line} {self.fd.format_app(app)}\"\n        if self.pattern:\n            errors, total = self.fd.count_bit_errors(r['psdu'][:-self.fd.FCS_LEN], self.pattern)\n            line += f\" bit_err={errors}/{total}\"\n        return line + f\" {r['psdu'][:32]!r}\"\n"
+    _source_code: "\"\"\"\nDecodes the hat's MR-FSK frames from the symbol sync's soft symbols, prints them, and writes them\nto the run's text log with a UTC time. The frame logic is FrameSync in ground-station/fsk_decode.py.\nThe log also records each receiver setting when it changes, and when IQ recording starts and stops.\n\nexpect='greenbear' -> Green Bear packets from software/tests/usb-bridge (greenbear_packet.py): the header,\n                      sequence gaps, and the whole message on the lines under each frame\nexpect='tx-burst'  -> bit errors against the tx-burst pattern. The old app's 128-byte frames parse in this mode\n\"\"\"\nimport os\nimport sys\nimport time\n\nimport numpy as np\nfrom gnuradio import gr\n\n# Flowgraph variables passed in so their changes are logged. GRC calls the setters from the sliders\nSETTINGS = ('freq', 'rf_gain', 'vga_gain', 'amp', 'offset_hz', 'sq_thresh', 'iq_file')\n\n\ndef utc():\n    t = time.time()\n    return time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime(t)) + f'.{int(t % 1 * 1000):03d}Z'\n\n\ndef _setting(name):\n    def get(self):\n        return self.settings.get(name)\n\n    def put(self, value):\n        if self.settings.get(name) != value:\n            self.settings[name] = value\n            if name == 'iq_file':\n                self._write('# iq ' + ('off' if value == os.devnull else f'recording to {value}'))\n            else:\n                self._write(f'# {name}={value}')\n    return property(get, put)\n\n\nclass blk(gr.sync_block):\n    \"\"\"OCS-RF frame decoder\"\"\"\n\n    def __init__(self, expect='greenbear', log_file='', samp_rate=0.0, freq=0.0, rf_gain=0.0, vga_gain=0.0,\n                 amp=False, offset_hz=0.0, sq_thresh=0.0, iq_file=''):\n        gr.sync_block.__init__(self, name='OCS-RF frame decoder', in_sig=[np.float32], out_sig=None)\n        self.expect = expect\n        self.fd = None\n        self.frames = []\n        self.settings = {}\n        self.log = None\n        # Empty when GRC builds the block only to read its ports\n        if log_file:\n            os.makedirs(os.path.dirname(os.path.abspath(log_file)), exist_ok=True)\n            self.log = open(log_file, 'a', buffering=1)\n            self._write(f'# fsk_demod start, samp_rate={samp_rate:g}, log {log_file}')\n        self.freq, self.rf_gain, self.vga_gain, self.amp = freq, rf_gain, vga_gain, amp\n        self.offset_hz, self.sq_thresh, self.iq_file = offset_hz, sq_thresh, iq_file\n\n    def _load(self):\n        # Not at import time: GRC also runs this file, from somewhere else, to read the ports\n        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))\n        import fsk_decode\n        self.fd = fsk_decode\n        self.sync = fsk_decode.FrameSync()\n        self.link = fsk_decode.AppLink()\n        self.gb = fsk_decode.GreenBearLink() if self.expect == 'greenbear' else None\n        self.pattern = fsk_decode.PATTERNS.get(self.expect)\n\n    def _write(self, text):\n        if self.log:\n            self.log.write(f'{utc()} {text}\\n')\n\n    def work(self, input_items, output_items):\n        if self.fd is None:\n            self._load()\n        for r in self.sync.feed(np.array(input_items[0])):\n            self.frames.append(r)\n            for line in self._format(r):\n                print(line, flush=True)\n                self._write(line)\n        return len(input_items[0])\n\n    def stop(self):\n        self._write(f'# fsk_demod stop, {len(self.frames)} frames')\n        return True\n\n    def _format(self, r):\n        good = sum(f['fcs_ok'] for f in self.frames)\n        line = (f\"[{len(self.frames):4}] len={r['len']} fcs={'ok ' if r['fcs_ok'] else 'BAD'} ok={good}\"\n                f\" pol={'+' if r['polarity'] > 0 else '-'} sync_err={r['sync_errors']}\"\n                f\" offset={r['offset'] / 1e3:+5.1f}kHz dev={r['deviation'] / 1e3:4.1f}kHz\")\n        if r['snr'] is not None:\n            line += f\" snr={r['snr']:4.1f}dB\"\n        if self.gb:\n            gb = self.gb.update(r['psdu'], r['fcs_ok'])\n            return [line + f\" {r['psdu'][:32]!r}\"] + (self.fd.format_greenbear(gb) if gb else [])\n        app = self.link.update(r['psdu'], r['fcs_ok'])\n        if app:\n            return [f\"{line} {self.fd.format_app(app)}\"]\n        if self.pattern:\n            errors, total = self.fd.count_bit_errors(r['psdu'][:-self.fd.FCS_LEN], self.pattern)\n            line += f\" bit_err={errors}/{total}\"\n        return [line + f\" {r['psdu'][:32]!r}\"]\n\n\nfor _name in SETTINGS:\n    setattr(blk, _name, _setting(_name))\n"
     affinity: ''
     alias: ''
+    amp: amp
     comment: ''
-    expect: "'tx-burst'"
+    expect: "'greenbear'"
+    freq: freq
+    iq_file: iq_file
+    log_file: log_file
     maxoutbuf: '0'
     minoutbuf: '0'
+    offset_hz: offset_hz
+    rf_gain: rf_gain
+    samp_rate: samp_rate
+    sq_thresh: sq_thresh
+    vga_gain: vga_gain
   states:
     bus_sink: false
     bus_source: false
@@ -785,7 +967,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    amp: 'False'
+    amp: amp
     bandwidth: '0'
     center_freq: freq + 500e3
     comment: ''
@@ -795,7 +977,7 @@ blocks:
     minoutbuf: '0'
     samp_rate: samp_rate
     type: fc32
-    vga: '24'
+    vga: vga_gain
   states:
     bus_sink: false
     bus_source: false
@@ -831,6 +1013,8 @@ blocks:
     state: enabled
 
 connections:
+- [blocks_complex_to_interleaved_char_0, '0', blocks_file_sink_0, '0']
+- [blocks_copy_0, '0', blocks_complex_to_interleaved_char_0, '0']
 - [analog_quadrature_demod_cf_0, '0', blocks_moving_average_xx_0, '0']
 - [analog_simple_squelch_cc_0, '0', analog_quadrature_demod_cf_0, '0']
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0_0, '1']
@@ -839,6 +1023,7 @@ connections:
 - [digital_symbol_sync_xx_0, '0', virtual_sink_0, '0']
 - [freq_xlating_fir_filter_xxx_0, '0', analog_simple_squelch_cc_0, '0']
 - [freq_xlating_fir_filter_xxx_0, '0', qtgui_freq_sink_x_0_0, '0']
+- [soapy_hackrf_source_0, '0', blocks_copy_0, '0']
 - [soapy_hackrf_source_0, '0', freq_xlating_fir_filter_xxx_0, '0']
 - [soapy_hackrf_source_0, '0', qtgui_freq_sink_x_0, '0']
 - [soapy_hackrf_source_0, '0', qtgui_time_sink_x_0, '0']

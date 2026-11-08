@@ -6,7 +6,7 @@
  * the receiver's antenna apart, and never cable J3 to a receiver without an
  * attenuator.
  *
- * Console is 115200 8N1. Look for a burst of about 330 ms at 915 MHz, every 2 s.
+ * Console is 115200 8N1. Look for a burst of about 330 ms at 905 MHz, every 2 s.
  * It is about 100 kHz wide, so tune the receiver a few hundred kHz to one side to
  * keep it off the receiver's own DC spike.
  *

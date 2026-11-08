@@ -4,11 +4,12 @@ Offline decoder for the hat's MR-FSK frames, from a hackrf_transfer capture.
 
 Capture (8 MS/s, tuned 500 kHz off the signal to stay clear of the DC spike):
 
-    hackrf_transfer -r capture.iq -f 915500000 -s 8000000 -a 0 -l 16 -g 24 -n 80000000
+    hackrf_transfer -r capture.iq -f 905500000 -s 8000000 -a 0 -l 16 -g 24 -n 80000000
 
 Decode:
 
     python3 ground-station/fsk_decode.py capture.iq --expect tx-burst --fcs-search
+    python3 ground-station/fsk_decode.py capture.iq --expect greenbear     # software/tests/usb-bridge
 
 Preset 0: 2-FSK, 50 ksym/s, h = 1 (25 kHz deviation), uncoded, whitening off.
 
@@ -25,6 +26,8 @@ import sys
 import zlib
 
 import numpy as np
+
+import greenbear_packet as gbp
 
 SYMBOL_RATE = 50e3
 DEVIATION = 25e3
@@ -65,6 +68,9 @@ APP_PATTERN = 25
 APP_PATTERN_SEED = 0x6C078965
 APP_SEARCH = 64             # a damaged frame's counter is looked for this far past the last one
 APP_MAX_BER = 0.25          # above this a damaged frame's pattern isn't the one tried. Random is 0.5
+
+# Green Bear packets from software/tests/usb-bridge: the layout is in greenbear_packet.py
+GB_LEN_FIELD = 14
 
 
 def lowpass(cutoff, rate, n_taps):
@@ -335,6 +341,84 @@ def format_app(app):
     return f"{line} {totals} bit_err={app['errors']}/{8 * (APP_LEN - FCS_LEN - APP_PATTERN)}"
 
 
+class GreenBearLink:
+    """
+    Parses Green Bear packets from frames with a valid FCS, and counts sequence numbers never heard.
+    A sequence number that repeats or goes back (by more than half of the 16-bit range, so a wrap still
+    counts as a gap) is a restart of the sender, or test packets sent in a loop, and isn't loss.
+
+    The packet is the PSDU before its FCS, so the bridge has to send the packet plus 4 spare bytes.
+    If it sends only the packet, the chip's FCS overwrites the packet's last 4 bytes: its CRC-16 and
+    the last 2 bytes of content. That is reported as tail_lost, with the content that is left.
+    """
+
+    def __init__(self):
+        self.last_seq = None
+        self.packets = []
+        self.lost = self.bad = self.unparsed = self.tail_lost = self.restarts = 0
+
+    def _overwritten(self, psdu):
+        """The packet's header, if the PSDU is exactly the packet with its tail overwritten."""
+        if len(psdu) < gbp.HEADER_SIZE + FCS_LEN:
+            return None         # the length field itself was overwritten
+        content_len = int.from_bytes(psdu[GB_LEN_FIELD:GB_LEN_FIELD + 2], "little")
+        if psdu[:7] != gbp.CALLSIGN or psdu[7] != gbp.VERSION or len(psdu) != gbp.HEADER_SIZE + content_len + gbp.CRC_SIZE:
+            return None
+        seq, time = int.from_bytes(psdu[8:10], "little"), int.from_bytes(psdu[10:14], "little")
+        return gbp.Packet(psdu[:7], psdu[7], seq, time, psdu[gbp.HEADER_SIZE:-FCS_LEN])
+
+    def update(self, psdu, good):
+        """Returns a dict for a frame with a valid FCS, or None for a bad one."""
+        if not good:
+            self.bad += 1
+            return None
+        tail_lost = False
+        try:
+            pkt = gbp.parse(psdu[:-FCS_LEN])
+        except ValueError as e:
+            pkt = self._overwritten(psdu)
+            if pkt is None:
+                self.unparsed += 1
+                return {"pkt": None, "error": str(e), "data": psdu[:-FCS_LEN], "link": self}
+            tail_lost = True
+            self.tail_lost += 1
+
+        step = None if self.last_seq is None else (pkt.seq - self.last_seq) % 65536
+        restart = step is not None and (step == 0 or step > 32768)
+        missed = step - 1 if step is not None and not restart else 0
+        self.restarts += restart
+        self.lost += missed
+        self.last_seq = pkt.seq
+        self.packets.append(pkt)
+        return {"pkt": pkt, "tail_lost": tail_lost, "missed": missed, "restart": restart, "link": self}
+
+    def summary(self):
+        return (f"packets={len(self.packets)} lost={self.lost} bad={self.bad} unparsed={self.unparsed}"
+                f" tail_lost={self.tail_lost} restarts={self.restarts}")
+
+
+def format_message(data):
+    """The whole message on one line, as text where it is text."""
+    return repr(data.decode("utf-8", "backslashreplace"))
+
+
+def format_greenbear(gb):
+    """Two lines: the packet's header and counts, then its whole content."""
+    link = gb["link"]
+    if gb["pkt"] is None:
+        return [f"      greenbear parse: {gb['error']} unparsed={link.unparsed}",
+                f"      msg: {format_message(gb['data'])}"]
+    pkt = gb["pkt"]
+    crc = "lost (tail overwritten by the FCS: the bridge must send 4 more bytes)" if gb["tail_lost"] else "ok"
+    line = (f"      greenbear callsign={pkt.callsign.decode('ascii', 'replace')!r} seq={pkt.seq} time={pkt.time}"
+            f" len={len(pkt.content) + 2 * gb['tail_lost']} lost={link.lost} bad={link.bad} crc16={crc}")
+    if gb["missed"]:
+        line += f" GAP missed={gb['missed']}"
+    if gb["restart"]:
+        line += f" RESTART restarts={link.restarts}"
+    return [line, f"      msg: {format_message(pkt.content)}{' [last 2 bytes lost]' if gb['tail_lost'] else ''}"]
+
+
 def find_sync(x, offset, cutoff):
     """Removes offset and filters. Returns the signal, frequency, SFD start, polarity and residual offset."""
     t = np.arange(len(x)) / CHANNEL_RATE
@@ -498,7 +582,7 @@ class FrameSync:
         return float(np.mean(self.buf[i - n:i])) * DEVIATION
 
 
-def decode_capture(path, rate=8e6, tune=915.5e6, freq=915e6):
+def decode_capture(path, rate=8e6, tune=905.5e6, freq=905e6):
     z = read_channel(path, rate, freq - tune)
     bursts = find_bursts(z)
     noise = noise_power(z, bursts)
@@ -530,9 +614,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("capture", help="signed 8-bit IQ file from hackrf_transfer -r")
     ap.add_argument("--rate", type=float, default=8e6, help="capture sample rate, Hz")
-    ap.add_argument("--tune", type=float, default=915.5e6, help="capture centre frequency, Hz")
-    ap.add_argument("--freq", type=float, default=915e6, help="signal frequency, Hz")
-    ap.add_argument("--expect", choices=sorted(PATTERNS), help="count bit errors against a known payload")
+    ap.add_argument("--tune", type=float, default=905.5e6, help="capture centre frequency, Hz")
+    ap.add_argument("--freq", type=float, default=905e6, help="signal frequency, Hz")
+    ap.add_argument("--expect", choices=sorted(PATTERNS) + ["greenbear"],
+                    help="count bit errors against a known payload, or parse usb-bridge's Green Bear packets")
     ap.add_argument("--fcs-search", action="store_true", help="on a bad FCS, try the CRC-32 variants")
     ap.add_argument("--hex", action="store_true", help="print the first 64 PSDU bytes of each frame")
     args = ap.parse_args()
@@ -540,10 +625,17 @@ def main():
     pattern = PATTERNS.get(args.expect)
     results = decode_capture(args.capture, args.rate, args.tune, args.freq)
     link = AppLink()
+    gb_link = GreenBearLink() if args.expect == "greenbear" else None
 
     for i, r in enumerate(results, 1):
-        app = link.update(r["psdu"], r["fcs_ok"]) if "fcs_ok" in r else None
-        print(format_frame(i, r, pattern, app))
+        if gb_link:
+            gb = gb_link.update(r["psdu"], r["fcs_ok"]) if "fcs_ok" in r else None
+            print(format_frame(i, r, pattern))
+            for line in format_greenbear(gb) if gb else []:
+                print(line)
+        else:
+            app = link.update(r["psdu"], r["fcs_ok"]) if "fcs_ok" in r else None
+            print(format_frame(i, r, pattern, app))
         if args.hex and "psdu" in r:
             print(f"      {r['psdu'][:64].hex(' ')}")
         if args.fcs_search and r.get("fcs_ok") is False:
@@ -554,6 +646,8 @@ def main():
     print(f"bursts={len(results)} frames={frames} fcs_ok={good}")
     if link.frames or link.unidentified:
         print(link.summary())
+    if gb_link:
+        print(gb_link.summary())
     return 0 if good else 1
 
 

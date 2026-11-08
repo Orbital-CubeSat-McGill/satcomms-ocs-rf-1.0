@@ -20,6 +20,7 @@ from PyQt5 import Qt
 
 import fsk_decode
 import fsk_demod
+import greenbear_packet as gbp
 import test_fsk_decode as sim
 
 app = Qt.QApplication(sys.argv[:1])
@@ -61,12 +62,13 @@ class Flowgraph(unittest.TestCase):
 
     def run_graph(self, bursts, offset_hz=0, **kw):
         sim.write_capture(capture, jittered(bursts), **kw)
-        tb = fsk_demod.fsk_demod()
+        tb = fsk_demod.fsk_demod(log_dir=self.dir.name)
         tb.set_offset_hz(offset_hz)
         start = time.monotonic()
         tb.start()
         tb.wait()
         self.speed = os.path.getsize(capture) / 2 / (time.monotonic() - start)
+        self.tb = tb
         return tb.epy_block_0.frames
 
     def assert_all_good(self, frames, payload, count):
@@ -116,6 +118,54 @@ class Flowgraph(unittest.TestCase):
             link.update(f["psdu"], f["fcs_ok"])
             self.assertAlmostEqual(f["snr"], 20.0, delta=1.5)
         self.assertEqual((link.frames, link.lost, link.bad, link.bit_errors), (28, 2, 0, 0))
+
+    def test_logs_and_iq(self):
+        """The text log gets the settings and every frame, and the IQ file holds the capture's own bytes."""
+        payload = bytes(range(124))
+        sim.write_capture(capture, jittered([sim.modulate(sim.frame_bits(payload))] * 3))
+        tb = fsk_demod.fsk_demod(log_dir=self.dir.name)
+        tb.set_record_iq(True)
+        tb.start()
+        tb.wait()
+        tb.set_rf_gain(32)
+        tb.set_record_iq(False)
+        tb.blocks_file_sink_0.do_update()
+
+        iq = [n for n in os.listdir(self.dir.name) if n.endswith(".iq") and n != os.path.basename(capture)]
+        self.assertEqual(len(iq), 1)
+        with open(capture, "rb") as a, open(os.path.join(self.dir.name, iq[0]), "rb") as b:
+            self.assertTrue(a.read() == b.read())
+        results = fsk_decode.decode_capture(os.path.join(self.dir.name, iq[0]), sim.RATE, sim.TUNE, sim.FREQ)
+        self.assertEqual(sum(r["fcs_ok"] for r in results), 3)
+
+        with open(tb.log_file) as f:
+            lines = [line.split(" ", 1)[1] for line in f.read().splitlines()]
+        self.assertTrue(lines[0].startswith("# fsk_demod start"))
+        self.assertIn("# freq=905000000.0", lines)
+        self.assertIn(f"# iq recording to {os.path.join(self.dir.name, iq[0])}", lines)
+        self.assertEqual(sum("fcs=ok" in line for line in lines), 3)
+        self.assertEqual(lines[-2:], ["# rf_gain=32", "# iq off"])
+
+    def test_greenbear_packets(self):
+        """Sent with 4 spare bytes for the FCS: whole messages back, the gap counted, and both in the log."""
+        seqs = [10, 11, 12, 15]
+        packets = [gbp.build(s, 1700000000 + s, f"log line {s}: ".encode() + bytes(range(65, 125))) for s in seqs]
+        self.run_graph([sim.modulate(sim.frame_bits(p), cfo=1e3) for p in packets])
+        link = self.tb.epy_block_0.gb
+        self.assertEqual([p.seq for p in link.packets], seqs)
+        self.assertEqual([p.content for p in link.packets], [gbp.parse(p).content for p in packets])
+        self.assertEqual((link.lost, link.tail_lost), (2, 0))
+        with open(self.tb.log_file) as f:
+            log = f.read()
+        self.assertIn(f"msg: {gbp.parse(packets[-1]).content.decode()!r}", log)
+        self.assertIn("GAP missed=2", log)
+
+    def test_greenbear_tail_overwritten(self):
+        """usb-bridge sending only the packet's length: the chip's FCS overwrites its last 4 bytes."""
+        packet = gbp.build(5, 42, b"hello world")
+        self.run_graph([sim.modulate(sim.frame_bits(packet[:-4]))])
+        link = self.tb.epy_block_0.gb
+        self.assertEqual(([p.content for p in link.packets], link.tail_lost), ([b"hello wor"], 1))
 
     def test_weak_signal(self):
         payload = bytes(range(124))
